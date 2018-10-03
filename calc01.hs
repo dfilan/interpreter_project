@@ -16,15 +16,9 @@ instance Show OpType where
 data Token = Nat Natural | Op OpType | EOF
 
 stringifyToken :: Token -> String
-stringifyToken (Nat x) = show x
-stringifyToken (Op x)  = show x
-stringifyToken EOF     = "EOF"
+stringifyToken (Nat x) = "Token(Nat," ++ show x ++ ")"
+stringifyToken (Op x)  = "Token(Op," ++ show x ++ ")"
+stringifyToken EOF     = "Token(EOF,EOF)"
 
 instance Show Token where
   show token = stringifyToken token
-
-myFive :: Natural
-myFive = 5
-
-mySix :: Natural
-mySix = 6
