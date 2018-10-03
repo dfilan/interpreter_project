@@ -1,6 +1,7 @@
 -- simple calculator thing
 
 import Numeric.Natural
+import Data.Char
 
 -- defining a data type for the operations we can have
 data OpType = Plus
@@ -22,3 +23,18 @@ stringifyToken EOF     = "Token(EOF,EOF)"
 
 instance Show Token where
   show token = stringifyToken token
+
+-- data types for input strings and positions
+type Input = String
+type Position = Int
+
+-- lexical analyser. take a string and a position, get a token and the next
+-- position
+getToken :: String -> Position -> (Token, Position)
+getToken str pos
+    | pos > len - 1 = (EOF, nextPos)
+    | isDigit char  = (Nat $ fromIntegral $ digitToInt char, nextPos)
+    | char == '+'   = (Op Plus, nextPos)
+    where char    = str !! pos
+          len     = length str
+          nextPos = pos + 1
