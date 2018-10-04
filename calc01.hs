@@ -47,6 +47,7 @@ getToken str pos
     | char == '+'   = Just (Op Plus, pos + 1)
     | char == '*'   = Just (Op Times, pos + 1)
     | char == '-'   = Just (Op Monus, pos + 1)
+    | char == ' '   = getToken str $ pos + 1
     | otherwise     = Nothing
     where char = str !! pos
           len  = length str
