@@ -1,5 +1,4 @@
 -- simple calculator thing
--- TODO: handle invalid input more nicely/monadically/functorially
 
 import Numeric.Natural
 import Data.Char
@@ -43,7 +42,7 @@ type Position = Int
 getToken :: Input -> Position -> Maybe (Token, Position)
 getToken str pos
     | pos > len - 1 = Just (EOF, pos + 1)
-    | isDigit char  = Just (Nat $ fromIntegral $ digitToInt char, pos + 1)
+    | isDigit char  = readNat str pos
     | char == '+'   = Just (Op Plus, pos + 1)
     | char == '*'   = Just (Op Times, pos + 1)
     | char == '-'   = Just (Op Monus, pos + 1)
@@ -51,6 +50,23 @@ getToken str pos
     | otherwise     = Nothing
     where char = str !! pos
           len  = length str
+
+-- special method for reading natural numbers
+readNat :: Input -> Position -> Maybe (Token, Position)
+readNat str pos = Just (Nat n, pos + diff)
+    where (n, diff) = readNat' str pos
+
+readNat' :: Input -> Position -> (Natural, Int)
+readNat' st ps = makePair (fromIntegral . digitsToNum) length $ getDigits st ps
+
+makePair :: (c -> a) -> (c -> b) -> c -> (a,b)
+makePair f g x = (f x, g x)
+
+getDigits :: Input -> Position -> [Int]
+getDigits str pos = map digitToInt $ takeWhile isDigit $ drop pos str
+
+digitsToNum :: [Int] -> Int
+digitsToNum = foldl (\acc n -> n + 10 * acc) 0
 
 -- turn input into a list of tokens
 stringToTokens :: Input -> Maybe [Token]
@@ -65,7 +81,7 @@ stringToTokens' str (Just n)
     where token   = fmap fst $ getToken str n
           nextPos = fmap snd $ getToken str n
 
-helper :: Maybe Token -> Maybe [Token] -> Maybe [Token]
+helper :: Maybe a -> Maybe [a] -> Maybe [a]
 helper maybeToken maybeList = fmap (:) maybeToken <*> maybeList
 
 -- takes a sequence of tokens, and if they form an expression, then compute what
