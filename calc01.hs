@@ -44,24 +44,30 @@ getToken str pos
           len  = length str
 
 -- turn input into a list of tokens
-stringToTokens :: Input -> [Maybe Token]
-stringToTokens str = stringToTokens' str 0
+stringToTokens :: Input -> Maybe [Token]
+stringToTokens str = stringToTokens' str $ Just 0
 
-stringToTokens' :: Input -> Position -> [Maybe Token]
-stringToTokens' str n
-    | token == EOF = [Just EOF]
-    | otherwise    = token : stringToTokens' str nextPos
+-- there's probably a better more monadic way of doing this but whatever
+stringToTokens' :: Input -> Maybe Position -> Maybe [Token]
+stringToTokens' _ Nothing = Nothing
+stringToTokens' str (Just n)
+    | token == Just EOF = Just [EOF]
+    | otherwise         = helper token $ stringToTokens' str nextPos
     where token   = fmap fst $ getToken str n
-          nextPos = fmap snd $ getToken str n -- doesn't work, this returns a
-                                              -- Maybe Position
+          nextPos = fmap snd $ getToken str n
+
+helper :: Maybe Token -> Maybe [Token] -> Maybe [Token]
+helper maybeToken maybeList = fmap (:) maybeToken <*> maybeList
 
 -- takes a sequence of tokens, and if they form an expression, then compute what
 -- they're supposed to compute
 -- expression -> natural, op, natural
-expr :: [Token] -> Maybe Natural
-expr [Nat x, Op f, Nat y, EOF] = Just $ (opTypeFunc f) x y
-expr _                         = Nothing
+expr' :: [Token] -> Maybe Natural
+expr' [Nat x, Op f, Nat y, EOF] = Just $ (opTypeFunc f) x y
+expr' _                         = Nothing
 
+expr :: Maybe [Token] -> Maybe Natural
+expr tokens = tokens >>= expr'
 
 -- take in input. convert it to tokens, then check what that's expressed as.
 -- then, convert the result into a string, and print out that string.
