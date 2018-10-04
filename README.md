@@ -1,1 +1,1 @@
-Making an interpreter in Haskell for a simple programming language that was designed for a foundations of mathematics class. Following [this](https://ruslanspivak.com/lsbasi-part1/) tutorial for how one would build an interpreter.
+Making an interpreter in Haskell for a simple programming language that was designed for a foundations of mathematics class (see Chapter 8 part C of notes). Following [this](https://ruslanspivak.com/lsbasi-part1/) tutorial for how one would build an interpreter.
