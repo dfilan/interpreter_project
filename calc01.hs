@@ -1,21 +1,27 @@
 -- simple calculator thing
--- TODO: handle invalid input correctly
+-- TODO: handle invalid input more nicely/monadically/functorially
 
 import Numeric.Natural
 import Data.Char
 
 -- defining a data type for the operations we can have
-data OpType = Plus deriving (Eq)
+data OpType = Plus | Times | Monus deriving (Eq)
 
 stringifyOp :: OpType -> String
-stringifyOp Plus = "+"
+stringifyOp Plus  = "+"
+stringifyOp Times = "*"
+stringifyOp Monus = "-"
 
 instance Show OpType where
   show op = stringifyOp op
 
 -- takes an operator type and returns the operation that it represents
 opTypeFunc :: OpType -> Natural -> Natural -> Natural
-opTypeFunc Plus = (+)
+opTypeFunc Plus m n  = m + n
+opTypeFunc Times m n = m * n
+opTypeFunc Monus m n
+    | m > n     = m - n
+    | otherwise = 0
 
 -- defining a data type for tokens, where EOF means end of file.
 data Token = Nat Natural | Op OpType | EOF deriving (Eq)
@@ -39,6 +45,8 @@ getToken str pos
     | pos > len - 1 = Just (EOF, pos + 1)
     | isDigit char  = Just (Nat $ fromIntegral $ digitToInt char, pos + 1)
     | char == '+'   = Just (Op Plus, pos + 1)
+    | char == '*'   = Just (Op Times, pos + 1)
+    | char == '-'   = Just (Op Monus, pos + 1)
     | otherwise     = Nothing
     where char = str !! pos
           len  = length str
