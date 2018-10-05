@@ -1,41 +1,59 @@
 -- simple calculator thing
+-- supports natural numbers, addition, multiplication, and natural number
+-- subtraction (monus(m,n) = max(m-n,0)).
 
 import Numeric.Natural
 import Data.Char
 
--- defining a data type for the operations we can have
-data OpType = Plus | Times | Monus deriving (Eq)
+-- data types for operations by how much precedence they have
+data LowPrioOp = Plus | Monus deriving (Eq)
+data HighPrioOp = Times deriving (Eq)
 
-stringifyOp :: OpType -> String
-stringifyOp Plus  = "+"
-stringifyOp Times = "*"
-stringifyOp Monus = "-"
+showLowPrioOp :: LowPrioOp -> String
+showLowPrioOp Plus  = "+"
+showLowPrioOp Monus = "-"
 
-instance Show OpType where
-  show op = stringifyOp op
+instance Show LowPrioOp where
+  show = showLowPrioOp
 
--- takes an operator type and returns the operation that it represents
-opTypeFunc :: OpType -> Natural -> Natural -> Natural
-opTypeFunc Plus m n  = m + n
-opTypeFunc Times m n = m * n
-opTypeFunc Monus m n
+showHighPrioOp :: HighPrioOp -> String
+showHighPrioOp Times = "*"
+
+instance Show HighPrioOp where
+  show = showHighPrioOp
+
+-- functions to take operators and return the operations that they represent
+lowPrioOpFunc :: LowPrioOp -> Natural -> Natural -> Natural
+lowPrioOpFunc Plus m n  = m + n
+lowPrioOpFunc Monus m n
     | m > n     = m - n
     | otherwise = 0
 
--- defining a data type for tokens, where EOF means end of file.
-data Token = Nat Natural | Op OpType | EOF deriving (Eq)
+highPrioOpFunc :: HighPrioOp -> Natural -> Natural -> Natural
+highPrioOpFunc Times m n = m * n
 
-stringifyToken :: Token -> String
-stringifyToken (Nat x) = "Token Nat " ++ show x
-stringifyToken (Op x)  = "Token Op " ++ show x
-stringifyToken EOF     = "Token EOF"
+-- defining a data type for tokens, where EOF means end of file.
+data Token = Nat Natural
+           | LPOp LowPrioOp
+           | HPOp HighPrioOp
+           | EOF
+           deriving (Eq)
+
+showToken :: Token -> String
+showToken (Nat x)  = "Token Nat " ++ show x
+showToken (LPOp f) = "Token LPOp " ++ show f
+showToken (HPOp f) = "Token HPOp " ++ show f
+showToken EOF      = "Token EOF"
 
 instance Show Token where
-  show token = stringifyToken token
+  show = showToken
 
 -- data types for input strings and positions
 type Input = String
 type Position = Int
+  
+data Expression = Expr Term | ExprComb Term LowPrioOp Expression deriving (Show)
+data Term = Trm Natural | TrmComb Natural HighPrioOp Term deriving (Show)
 
 -- take the input and a position, get a token and the next position. Fail if the
 -- character doesn't represent a valid token.
@@ -43,9 +61,9 @@ getToken :: Input -> Position -> Maybe (Token, Position)
 getToken str pos
     | pos > len - 1 = Just (EOF, pos + 1)
     | isDigit char  = readNat str pos
-    | char == '+'   = Just (Op Plus, pos + 1)
-    | char == '*'   = Just (Op Times, pos + 1)
-    | char == '-'   = Just (Op Monus, pos + 1)
+    | char == '+'   = Just (LPOp Plus, pos + 1)
+    | char == '-'   = Just (LPOp Monus, pos + 1)
+    | char == '*'   = Just (HPOp Times, pos + 1)
     | char == ' '   = getToken str $ pos + 1
     | otherwise     = Nothing
     where char = str !! pos
@@ -84,20 +102,56 @@ stringToTokens' str (Just n)
 helper :: Maybe a -> Maybe [a] -> Maybe [a]
 helper maybeToken maybeList = fmap (:) maybeToken <*> maybeList
 
--- takes a sequence of tokens, and if they form an expression, then compute what
--- they're supposed to compute
--- expression -> natural, op, natural
-expr' :: [Token] -> Maybe Natural
-expr' [Nat x, Op f, Nat y, EOF] = Just $ (opTypeFunc f) x y
-expr' _                         = Nothing
+-- takes a sequence of tokens, and if they form a term, then see what term it is
+termify :: [Token] -> Maybe Term
+termify [Nat x]                  = Just (Trm x)
+termify ((Nat x):(HPOp f):terms) = fmap (TrmComb x f) $ termify terms
+termify _                        = Nothing
 
-expr :: Maybe [Token] -> Maybe Natural
-expr tokens = tokens >>= expr'
+-- evaluates a term
+evalTerm :: Term -> Natural
+evalTerm (Trm n)            = n
+evalTerm (TrmComb n f term) = (highPrioOpFunc f) n $ evalTerm term
+
+-- takes a sequence of tokens, and if they form an expression, see what
+-- expression it is.
+-- take the list of tokens. to pick out the first term, takewhile it's a nat or
+-- a HPOp, termify that. if next thing is EOF, that's just it, if next thing is
+-- a LPOp, then combine
+
+exprify :: [Token] -> Maybe Expression
+exprify tokens
+    | nextToken == EOF = fmap Expr mTerm
+    | otherwise        = ((fmap ExprComb mTerm) <*> (getLPOp nextToken)
+                          <*> (exprify $ tail restTokens))
+    where mTerm = termify $ takeWhile isTermStuff tokens
+          restTokens = dropWhile isTermStuff tokens
+          nextToken = head restTokens
+
+isTermStuff :: Token -> Bool
+isTermStuff (Nat n)  = True
+isTermStuff (HPOp f) = True
+isTermStuff _        = False
+
+getLPOp :: Token -> Maybe LowPrioOp
+getLPOp (LPOp f) = Just f
+getLPOp _        = Nothing
+
+-- evaluate an expression
+evalExpr :: Expression -> Natural
+evalExpr (Expr term) = evalTerm term
+evalExpr (ExprComb term lpOp expr) = ((lowPrioOpFunc lpOp) (evalTerm term)
+                                      (evalExpr expr))
+
+-- evaluate list of tokens by turning them into an expression and then evaluating
+-- that
+evalTokens :: [Token] -> Maybe Natural
+evalTokens = (fmap evalExpr) . exprify
 
 -- take in input. convert it to tokens, then check what that's expressed as.
 -- then, convert the result into a string, and print out that string.
 main = do
     input <- getLine
-    let tokens = stringToTokens input
-        val    = show $ expr tokens
+    let mTokens = stringToTokens input
+        val     = show $ mTokens >>= evalTokens
     putStrLn val
