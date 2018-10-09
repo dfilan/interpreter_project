@@ -35,13 +35,15 @@ highPrioOpFunc :: HighPrioOp -> Natural -> Natural -> Natural
 highPrioOpFunc Times m n = m * n
 
 -- defining a data type for variable names.
+-- secretly, they're actually going to be strings that consist entirely of
+-- alphabetic unicode characters
 type VarName = String
 
 -- defining a data type for "connective symbols"
 data Connective = Equals | Semi deriving (Eq)
 
 showCon :: Connective -> String
-showCon Equals = ":="
+showCon Equals = "="
 showCon Semi = ";"
 
 instance Show Connective where
@@ -54,35 +56,20 @@ data Token = Nat Natural
            | Var VarName
            | Con Connective
            | EOF
-           deriving (Eq)
-
-showToken :: Token -> String
-showToken (Nat x)  = "Token Nat " ++ show x
-showToken (LPOp f) = "Token LPOp " ++ show f
-showToken (HPOp f) = "Token HPOp " ++ show f
-showToken (Var s)  = "Token Var " ++ show s
-showToken (Con c)  = "Token Con " ++ show c
-showToken EOF      = "Token EOF"
-
-instance Show Token where
-  show = showToken
+           deriving (Eq, Show)
 
 -- data types for input strings and positions
 type Input = String
 type Position = Int
 
 -- data types representing the grammar of programs that we accept
-type Program = [Assignment] deriving (Eq, Show)
-type Assignment = (VarName, Expression) deriving (Eq, Show)
+type Program = [Assignment]
+type Assignment = (VarName, Expression)
 data Expression = Expr Term | ExprComb Term LowPrioOp Expression
                 deriving (Eq, Show)
 data Term = Trm Atom | TrmComb Atom HighPrioOp Term
           deriving (Eq, Show)
-data Atom = NatAtom Natural | VarAtom VarName
-
--- TODO: fix the rest of this. Deal with maps that associate variable names with
--- values. figure out what happens if you assign to a variable that hasn't been
--- referenced yet - maybe create a global scope or something?
+data Atom = NatAtom Natural | VarAtom VarName deriving (Eq, Show)
 
 -- take the input and a position, get a token and the next position. Fail if the
 -- character doesn't represent a valid token.
@@ -94,11 +81,23 @@ getToken str pos
     | char == '-'   = Just (LPOp Monus, pos + 1)
     | char == '*'   = Just (HPOp Times, pos + 1)
     | char == ' '   = getToken str $ pos + 1
-    | otherwise     = Nothing
+    | char == '='   = Just (Con Equals, pos + 1)
+    | char == ';'   = Just (Con Semi, pos + 1)
+    | otherwise     = readVarName str pos
     where char = str !! pos
           len  = length str
 
--- special method for reading natural numbers
+-- special function for reading variable names
+readVarName :: Input -> Position -> Maybe (Token, Position)
+readVarName str pos
+    | length name == 0 = Nothing
+    | otherwise        = Just (Var name, pos + (length name))
+    where name = getVarName str pos
+
+getVarName :: Input -> Position -> VarName
+getVarName str pos = takeWhile isAlpha $ drop pos str
+
+-- special function for reading natural numbers
 readNat :: Input -> Position -> Maybe (Token, Position)
 readNat str pos = Just (Nat n, pos + diff)
     where (n, diff) = readNat' str pos
@@ -130,6 +129,10 @@ stringToTokens' str (Just n)
 
 helper :: Maybe a -> Maybe [a] -> Maybe [a]
 helper maybeToken maybeList = fmap (:) maybeToken <*> maybeList
+
+-- TODO: fix the rest of this. Deal with maps that associate variable names with
+-- values. figure out what happens if you assign to a variable that hasn't been
+-- referenced yet - maybe create a global scope or something?
 
 -- takes a sequence of tokens, and if they form a term, then see what term it is
 termify :: [Token] -> Maybe Term
