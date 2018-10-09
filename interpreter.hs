@@ -76,7 +76,7 @@ getToken str
     | char == '+'   = Just (LPOp Plus, 1)
     | char == '-'   = Just (LPOp Monus, 1)
     | char == '*'   = Just (HPOp Times, 1)
-    | char == ' '   = getToken $ tail str
+    | char == ' '   = fmap (\(a,b) -> a, b+1) $ getToken $ tail str
     | char == '='   = Just (Con Equals, 1)
     | char == ';'   = Just (Con Semi, 1)
     | otherwise     = readVarName str
@@ -113,7 +113,8 @@ digitsToNum = foldl (\acc n -> n + 10 * acc) 0
 stringToTokens :: String -> Maybe [Token]
 stringToTokens str
     | token == Just EOF = Just [EOF]
-    | otherwise         = helper token $ stringToTokens $ drop nextPos str
+    | otherwise         = helper token $ ((fmap drop nextPos) <*> (Just str)
+                                          >>= stringToTokens)
     where token   = fmap fst $ getToken str
           nextPos = fmap snd $ getToken str
 

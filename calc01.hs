@@ -37,67 +37,50 @@ data Token = Nat Natural
            | LPOp LowPrioOp
            | HPOp HighPrioOp
            | EOF
-           deriving (Eq)
+           deriving (Eq, Show)
 
-showToken :: Token -> String
-showToken (Nat x)  = "Token Nat " ++ show x
-showToken (LPOp f) = "Token LPOp " ++ show f
-showToken (HPOp f) = "Token HPOp " ++ show f
-showToken EOF      = "Token EOF"
-
-instance Show Token where
-  show = showToken
-
--- data types for input strings and positions
-type Input = String
-type Position = Int
-  
+-- defining data types for the grammar we'll allow
 data Expression = Expr Term | ExprComb Term LowPrioOp Expression deriving (Show)
 data Term = Trm Natural | TrmComb Natural HighPrioOp Term deriving (Show)
 
 -- take the input and a position, get a token and the next position. Fail if the
 -- character doesn't represent a valid token.
-getToken :: Input -> Position -> Maybe (Token, Position)
-getToken str pos
-    | pos > len - 1 = Just (EOF, pos + 1)
-    | isDigit char  = readNat str pos
-    | char == '+'   = Just (LPOp Plus, pos + 1)
-    | char == '-'   = Just (LPOp Monus, pos + 1)
-    | char == '*'   = Just (HPOp Times, pos + 1)
-    | char == ' '   = getToken str $ pos + 1
-    | otherwise     = Nothing
-    where char = str !! pos
-          len  = length str
+getToken :: String -> Maybe (Token, Int)
+getToken str
+    | str == []    = Just (EOF, 0)
+    | isDigit char = readNat str
+    | char == '+'  = Just (LPOp Plus, 1)
+    | char == '-'  = Just (LPOp Monus, 1)
+    | char == '*'  = Just (HPOp Times, 1)
+    | char == ' '  = fmap (\(a,b) -> (a, b+1)) $ getToken $ tail str
+    | otherwise    = Nothing
+    where char = head str
 
--- special method for reading natural numbers
-readNat :: Input -> Position -> Maybe (Token, Position)
-readNat str pos = Just (Nat n, pos + diff)
-    where (n, diff) = readNat' str pos
+-- special function for reading natural numbers
+readNat :: String -> Maybe (Token, Int)
+readNat str = Just (Nat n, diff)
+    where (n, diff) = readNat' str
 
-readNat' :: Input -> Position -> (Natural, Int)
-readNat' st ps = makePair (fromIntegral . digitsToNum) length $ getDigits st ps
+readNat' :: String -> (Natural, Int)
+readNat' str = makePair (fromIntegral . digitsToNum) length $ getDigits str
 
 makePair :: (c -> a) -> (c -> b) -> c -> (a,b)
 makePair f g x = (f x, g x)
 
-getDigits :: Input -> Position -> [Int]
-getDigits str pos = map digitToInt $ takeWhile isDigit $ drop pos str
+getDigits :: String -> [Int]
+getDigits str = map digitToInt $ takeWhile isDigit str
 
 digitsToNum :: [Int] -> Int
 digitsToNum = foldl (\acc n -> n + 10 * acc) 0
 
 -- turn input into a list of tokens
-stringToTokens :: Input -> Maybe [Token]
-stringToTokens str = stringToTokens' str $ Just 0
-
--- there's probably a better more monadic way of doing this but whatever
-stringToTokens' :: Input -> Maybe Position -> Maybe [Token]
-stringToTokens' _ Nothing = Nothing
-stringToTokens' str (Just n)
+stringToTokens :: String -> Maybe [Token]
+stringToTokens str
     | token == Just EOF = Just [EOF]
-    | otherwise         = helper token $ stringToTokens' str nextPos
-    where token   = fmap fst $ getToken str n
-          nextPos = fmap snd $ getToken str n
+    | otherwise         = helper token $ ((fmap drop nextPos) <*> (Just str)
+                                          >>= stringToTokens)
+    where token   = fmap fst $ getToken str
+          nextPos = fmap snd $ getToken str
 
 helper :: Maybe a -> Maybe [a] -> Maybe [a]
 helper maybeToken maybeList = fmap (:) maybeToken <*> maybeList
