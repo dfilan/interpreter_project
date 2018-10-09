@@ -139,8 +139,8 @@ evalExpr (Expr term) = evalTerm term
 evalExpr (ExprComb term lpOp expr) = ((lowPrioOpFunc lpOp) (evalTerm term)
                                       (evalExpr expr))
 
--- evaluate list of tokens by turning them into an expression and then evaluating
--- that
+-- evaluate list of tokens by turning them into an expression and then
+-- evaluating that
 evalTokens :: [Token] -> Maybe Natural
 evalTokens = (fmap evalExpr) . exprify
 
