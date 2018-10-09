@@ -115,10 +115,6 @@ evalTerm (TrmComb n f term) = (highPrioOpFunc f) n $ evalTerm term
 
 -- takes a sequence of tokens, and if they form an expression, see what
 -- expression it is.
--- take the list of tokens. to pick out the first term, takewhile it's a nat or
--- a HPOp, termify that. if next thing is EOF, that's just it, if next thing is
--- a LPOp, then combine
-
 exprify :: [Token] -> Maybe Expression
 exprify tokens
     | nextToken == EOF = fmap Expr mTerm
