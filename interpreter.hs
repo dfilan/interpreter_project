@@ -5,7 +5,9 @@
 
 import Numeric.Natural
 import Data.Char
-import qualified Data.Map.Strict as Map
+import Control.Applicative
+import Control.Monad
+import qualified Data.HashMap.Lazy as HM
 
 -- data types for operations by how much precedence they have
 data LowPrioOp = Plus | Monus deriving (Eq)
@@ -25,26 +27,30 @@ instance Show HighPrioOp where
   show = showHighPrioOp
 
 -- functions to take operators and return the operations that they represent
-lowPrioOpFunc :: LowPrioOp -> Natural -> Natural -> Natural
-lowPrioOpFunc Plus m n  = m + n
-lowPrioOpFunc Monus m n
+lpOpFunc :: LowPrioOp -> Natural -> Natural -> Natural
+lpOpFunc Plus m n  = m + n
+lpOpFunc Monus m n
     | m > n     = m - n
     | otherwise = 0
 
-highPrioOpFunc :: HighPrioOp -> Natural -> Natural -> Natural
-highPrioOpFunc Times m n = m * n
+hpOpFunc :: HighPrioOp -> Natural -> Natural -> Natural
+hpOpFunc Times m n = m * n
 
 -- defining a data type for variable names.
 -- secretly, they're actually going to be strings that consist entirely of
 -- alphabetic unicode characters
 type VarName = String
 
+-- while we're interpreting the program, we're going to keep a scope table
+-- associating variable names with the values that they hold
+type ScopeTable = HM.HashMap VarName Natural
+
 -- defining a data type for "connective symbols"
 data Connective = Equals | Semi deriving (Eq)
 
 showCon :: Connective -> String
 showCon Equals = "="
-showCon Semi = ";"
+showCon Semi   = ";"
 
 instance Show Connective where
   show = showCon
@@ -59,7 +65,7 @@ data Token = Nat Natural
            deriving (Eq, Show)
 
 -- data types representing the grammar of programs that we accept
-type Program = [Assignment]
+type Program = (VarName, [Assignment])
 type Assignment = (VarName, Expression)
 data Expression = Expr Term | ExprComb Term LowPrioOp Expression
                 deriving (Eq, Show)
@@ -71,15 +77,15 @@ data Atom = NatAtom Natural | VarAtom VarName deriving (Eq, Show)
 -- character doesn't represent a valid token.
 getToken :: String -> Maybe (Token, Int)
 getToken str
-    | str == []     = Just (EOF, 0)
-    | isDigit char  = readNat str
-    | char == '+'   = Just (LPOp Plus, 1)
-    | char == '-'   = Just (LPOp Monus, 1)
-    | char == '*'   = Just (HPOp Times, 1)
-    | char == ' '   = fmap (\(a,b) -> a, b+1) $ getToken $ tail str
-    | char == '='   = Just (Con Equals, 1)
-    | char == ';'   = Just (Con Semi, 1)
-    | otherwise     = readVarName str
+    | str == []    = Just (EOF, 0)
+    | isDigit char = readNat str
+    | char == '+'  = Just (LPOp Plus, 1)
+    | char == '-'  = Just (LPOp Monus, 1)
+    | char == '*'  = Just (HPOp Times, 1)
+    | char == ' '  = fmap (\(a,b) -> (a,b+1)) $ getToken $ tail str
+    | char == '='  = Just (Con Equals, 1)
+    | char == ';'  = Just (Con Semi, 1)
+    | otherwise    = readVarName str
     where char = head str
 
 -- special function for reading variable names
@@ -89,7 +95,7 @@ readVarName str
     | otherwise        = Just (Var name, (length name))
     where name = getVarName str
 
-getVarName :: String -> Int -> VarName
+getVarName :: String -> VarName
 getVarName str = takeWhile isAlpha str
 
 -- special function for reading natural numbers
@@ -112,43 +118,50 @@ digitsToNum = foldl (\acc n -> n + 10 * acc) 0
 -- turn input into a list of tokens
 stringToTokens :: String -> Maybe [Token]
 stringToTokens str
-    | token == Just EOF = Just [EOF]
-    | otherwise         = helper token $ ((fmap drop nextPos) <*> (Just str)
-                                          >>= stringToTokens)
-    where token   = fmap fst $ getToken str
-          nextPos = fmap snd $ getToken str
+    | mToken == Just EOF = Just [EOF]
+    | otherwise          = helper mToken $ ((fmap drop mNextPos) <*> (Just str)
+                                            >>= stringToTokens)
+    where mToken   = fmap fst $ getToken str
+          mNextPos = fmap snd $ getToken str
 
 helper :: Maybe a -> Maybe [a] -> Maybe [a]
 helper maybeToken maybeList = fmap (:) maybeToken <*> maybeList
 
--- TODO: fix the rest of this. Deal with maps that associate variable names with
--- values. figure out what happens if you assign to a variable that hasn't been
--- referenced yet - maybe create a global scope or something?
+-- evaluates an atom
+evalAtom :: Atom -> ScopeTable -> Maybe Natural
+evalAtom (NatAtom n) _     = Just n
+evalAtom (VarAtom v) scope = HM.lookup v scope
 
 -- takes a sequence of tokens, and if they form a term, then see what term it is
 termify :: [Token] -> Maybe Term
-termify [Nat x]                  = Just (Trm x)
-termify ((Nat x):(HPOp f):terms) = fmap (TrmComb x f) $ termify terms
-termify _                        = Nothing
+termify [Nat x]               = Just (Trm $ NatAtom x)
+termify [Var v]               = Just (Trm $ VarAtom v)
+termify ((Nat x):(HPOp f):ts) = fmap (TrmComb (NatAtom x) f) $ termify ts
+termify ((Var v):(HPOp f):ts) = fmap (TrmComb (VarAtom v) f) $ termify ts
+termify _                     = Nothing
 
 -- evaluates a term
-evalTerm :: Term -> Natural
-evalTerm (Trm n)            = n
-evalTerm (TrmComb n f term) = (highPrioOpFunc f) n $ evalTerm term
+evalTerm :: Term -> ScopeTable -> Maybe Natural
+evalTerm (Trm atom) scope            = evalAtom atom scope
+evalTerm (TrmComb atom f term) scope = (liftA2 (hpOpFunc f)
+                                        (evalAtom atom scope)
+                                        (evalTerm term scope))
 
 -- takes a sequence of tokens, and if they form an expression, see what
 -- expression it is.
 exprify :: [Token] -> Maybe Expression
 exprify tokens
-    | nextToken == EOF = fmap Expr mTerm
-    | otherwise        = ((fmap ExprComb mTerm) <*> (getLPOp nextToken)
-                          <*> (exprify $ tail restTokens))
+    | nextToken == EOF      = fmap Expr mTerm
+    | nextToken == Con Semi = fmap Expr mTerm
+    | otherwise             = ((fmap ExprComb mTerm) <*> (getLPOp nextToken)
+                               <*> (exprify $ tail restTokens))
     where mTerm = termify $ takeWhile isTermStuff tokens
           restTokens = dropWhile isTermStuff tokens
           nextToken = head restTokens
 
 isTermStuff :: Token -> Bool
 isTermStuff (Nat n)  = True
+isTermStuff (Var v)  = True
 isTermStuff (HPOp f) = True
 isTermStuff _        = False
 
@@ -157,20 +170,69 @@ getLPOp (LPOp f) = Just f
 getLPOp _        = Nothing
 
 -- evaluate an expression
-evalExpr :: Expression -> Natural
-evalExpr (Expr term) = evalTerm term
-evalExpr (ExprComb term lpOp expr) = ((lowPrioOpFunc lpOp) (evalTerm term)
-                                      (evalExpr expr))
+evalExpr :: Expression -> ScopeTable -> Maybe Natural
+evalExpr (Expr term) scope               = evalTerm term scope
+evalExpr (ExprComb term lpOp expr) scope = (liftA2 (lpOpFunc lpOp)
+                                            (evalTerm term scope)
+                                            (evalExpr expr scope))
 
--- evaluate list of tokens by turning them into an expression and then
+-- take a sequence of tokens, and if they form a variable assignment, return
+-- that assignment
+assnify :: [Token] -> Maybe Assignment
+assnify ((Var v):(Con Equals):ts) = fmap (\e -> (v, e)) $ exprify ts
+assnify _                         = Nothing
+
+-- take an assignment and a scope, and update the scope with the assignment
+-- but return nothing if the RHS of the assignment is ill-defined
+updateScope :: ScopeTable -> Assignment -> Maybe ScopeTable
+updateScope scope (v, e) = fmap (\n -> HM.insert v n scope) (evalExpr e scope)
+
+-- take a list of assignments and a scope, and return the scope after all the
+-- assignments have been made
+evalAssns :: [Assignment] -> ScopeTable -> Maybe ScopeTable
+evalAssns assns scope = foldM updateScope scope assns
+
+-- turn a list of tokens into a program
+progrify :: [Token] -> Maybe Program
+progrify list =
+  case groupLines list of
+   [Var v, Con Semi]:tList -> fmap (\as -> (v, as)) $ getListAssns tList
+   _                       -> Nothing
+
+groupLines :: [Token] -> [[Token]]
+groupLines [] = []
+groupLines ts = (takeUntil notSemiOrEOF ts):(groupLines (dropUntil
+                                                         notSemiOrEOF ts))
+
+takeUntil :: (a -> Bool) -> [a] -> [a]
+takeUntil pred list = (takeWhile pred list) ++ [head $ dropWhile pred list]
+
+dropUntil :: (a -> Bool) -> [a] -> [a]
+dropUntil pred list = tail $ dropWhile pred list
+
+notSemiOrEOF :: Token -> Bool
+notSemiOrEOF t = notElem t [Con Semi, EOF]
+
+getListAssns :: [[Token]] -> Maybe [Assignment]
+getListAssns []    = Just []
+getListAssns tList = case assnify $ head tList of
+                      Nothing   -> Nothing
+                      Just assn -> fmap ((:) assn) $ getListAssns $ tail tList
+  
+-- take a program and a scope, and return the value of the stated variable after
+-- all the assignments have been made in order
+evalProgram :: ScopeTable -> Program -> Maybe Natural
+evalProgram scope (v, assns) = evalAssns assns scope >>= (HM.lookup v)
+
+-- evaluate the list of tokens by turning them into a program and then
 -- evaluating that
 evalTokens :: [Token] -> Maybe Natural
-evalTokens = (fmap evalExpr) . exprify
+evalTokens tokens = (progrify tokens) >>= (evalProgram HM.empty)
 
--- take in input. convert it to tokens, then check what that's expressed as.
--- then, convert the result into a string, and print out that string.
+-- take in input. convert it to tokens, then evaluate those tokens as a program.
+-- then print the output
 main = do
     input <- getLine
     let mTokens = stringToTokens input
-        val     = show $ mTokens >>= evalTokens
-    putStrLn val
+        val     = mTokens >>= evalTokens
+    putStrLn $ show val
