@@ -6,3 +6,4 @@ Changes to the language as defined in the notes:
 - 'Programs' are one line. They begin with a variable name and a semicolon, and then consist of a sequence of variable assignments separated by semicolons. The interpreter outputs the value of the initially named variable after the assignments are made in order.
 - All binary operators are right-associative, so 3 monus 5 + 7 = 3 monus (5 + 7) = 0.
 - The assignment operator is written '='
+- You can use parentheses in arithmetic expressions like (3 monus 5) + 7, which evaluates to 7.

@@ -23,6 +23,7 @@ evalTerm (Trm atom) scope            = evalAtom atom scope
 evalTerm (TrmComb atom f term) scope = (liftA2 (hpOpFunc f)
                                         (evalAtom atom scope)
                                         (evalTerm term scope))
+evalTerm (ParenTrm expr) scope       = evalExpr expr scope
 
 
 -- evaluate an expression

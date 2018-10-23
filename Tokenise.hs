@@ -9,7 +9,7 @@ import Data.Char
 
 import Types
 
--- take the input and a position, get a token and the next position. Fail if the
+-- take the input, get a token and the offest to next token. Fail if the
 -- character doesn't represent a valid token.
 getToken :: String -> Maybe (Token, Int)
 getToken str
@@ -19,8 +19,10 @@ getToken str
     | char == '-'  = Just (LPOp Monus, 1)
     | char == '*'  = Just (HPOp Times, 1)
     | char == ' '  = fmap (\(a,b) -> (a,b+1)) $ getToken $ tail str
-    | char == '='  = Just (Con Equals, 1)
-    | char == ';'  = Just (Con Semi, 1)
+    | char == '='  = Just (Punct Equals, 1)
+    | char == ';'  = Just (Punct Semi, 1)
+    | char == '('  = Just (Punct Pal, 1)
+    | char == ')'  = Just (Punct Par, 1)
     | otherwise    = readVarName str
     where char = head str
 

@@ -8,7 +8,7 @@ module Types
        , hpOpFunc
        , VarName
        , ScopeTable
-       , Connective(..)
+       , Punctuation(..)
        , Token(..)
        , Program
        , Assignment
@@ -56,30 +56,35 @@ type VarName = String
 -- associating variable names with the values that they hold
 type ScopeTable = HM.HashMap VarName Natural
 
--- defining a data type for "connective symbols"
-data Connective = Equals | Semi deriving (Eq)
+-- defining a data type for "punctuation symbols"
+data Punctuation = Equals | Semi | Pal | Par deriving (Eq)
 
-showCon :: Connective -> String
-showCon Equals = "="
-showCon Semi   = ";"
+showPunct :: Punctuation -> String
+showPunct Equals = "="
+showPunct Semi   = ";"
+showPunct Pal    = "("
+showPunct Par    = ")"
 
-instance Show Connective where
-  show = showCon
+instance Show Punctuation where
+  show = showPunct
 
 -- defining a data type for tokens, where EOF means end of file.
 data Token = Nat Natural
            | LPOp LowPrioOp
            | HPOp HighPrioOp
            | Var VarName
-           | Con Connective
+           | Punct Punctuation
            | EOF
            deriving (Eq, Show)
 
 -- data types representing the grammar of programs that we accept
-type Program = (VarName, [Assignment])
+type Program    = (VarName, [Assignment])
 type Assignment = (VarName, Expression)
 data Expression = Expr Term | ExprComb Term LowPrioOp Expression
                 deriving (Eq, Show)
-data Term = Trm Atom | TrmComb Atom HighPrioOp Term
-          deriving (Eq, Show)
-data Atom = NatAtom Natural | VarAtom VarName deriving (Eq, Show)
+-- below, ParenTrm Expression means an expression with parens on either side
+data Term       = Trm Atom | TrmComb Atom HighPrioOp Term
+                | ParenTrm Expression
+                deriving (Eq, Show)
+data Atom       = NatAtom Natural | VarAtom VarName
+                deriving (Eq, Show)

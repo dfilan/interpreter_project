@@ -1,6 +1,6 @@
 -- simple interpreter thing.
--- supports natural numbers, addition, multiplication, and natural number
--- subtraction (monus(m,n) = max(m-n,0)).
+-- supports natural numbers, addition, multiplication, natural number
+-- subtraction (m monus n = max(m-n,0)), parentheses, and variable assignment.
 -- these operations are right-associative: x + y + z = x + (y + z)
 
 import Tokenise

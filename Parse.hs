@@ -12,25 +12,54 @@ termify [Nat x]               = Just (Trm $ NatAtom x)
 termify [Var v]               = Just (Trm $ VarAtom v)
 termify ((Nat x):(HPOp f):ts) = fmap (TrmComb (NatAtom x) f) $ termify ts
 termify ((Var v):(HPOp f):ts) = fmap (TrmComb (VarAtom v) f) $ termify ts
+termify ((Punct Pal):ts)      = fmap ParenTrm $ exprify $ getInParens 1 ts
 termify _                     = Nothing
+
+-- Note: this does something weird when the first argument is a negative number
+getInParens :: Integer -> [Token] -> [Token]
+getInParens _ []               = []
+getInParens 0 ((Punct Pal):ts) = getInParens 1 ts
+getInParens n ((Punct Pal):ts) = (Punct Pal):(getInParens (n+1) ts)
+getInParens 1 ((Punct Par):ts) = []
+getInParens n ((Punct Par):ts) = (Punct Par):(getInParens (n-1) ts)
+getInParens n (t:ts)           = t:(getInParens n ts)
+
+dropParens :: Integer -> [Token] -> [Token]
+dropParens _ []               = []
+dropParens 0 ((Punct Pal):ts) = dropParens 1 ts
+dropParens n ((Punct Pal):ts) = dropParens (n+1) ts
+dropParens 1 ((Punct Par):ts) = ts
+dropParens n ((Punct Par):ts) = dropParens (n-1) ts
+dropParens n (t:ts)           = dropParens n ts
 
 -- takes a sequence of tokens, and if they form an expression, see what
 -- expression it is.
 exprify :: [Token] -> Maybe Expression
 exprify tokens
-    | nextToken == EOF      = fmap Expr mTerm
-    | nextToken == Con Semi = fmap Expr mTerm
-    | otherwise             = ((fmap ExprComb mTerm) <*> (getLPOp nextToken)
-                               <*> (exprify $ tail restTokens))
-    where mTerm = termify $ takeWhile isTermStuff tokens
-          restTokens = dropWhile isTermStuff tokens
-          nextToken = head restTokens
+    | restTokens == []         = fmap Expr mTerm
+    | nextToken == EOF         = fmap Expr mTerm
+    | nextToken == Punct Semi  = fmap Expr mTerm
+    | otherwise                = ((fmap ExprComb mTerm) <*> (getLPOp nextToken)
+                                  <*> (exprify $ tail restTokens))
+    where mTerm      = termify $ takeFirstTerm tokens
+          restTokens = dropFirstTerm tokens
+          nextToken  = head restTokens
 
-isTermStuff :: Token -> Bool
-isTermStuff (Nat n)  = True
-isTermStuff (Var v)  = True
-isTermStuff (HPOp f) = True
-isTermStuff _        = False
+takeFirstTerm :: [Token] -> [Token]
+takeFirstTerm ((Nat n):ts)     = (Nat n):(takeFirstTerm ts)
+takeFirstTerm ((Var v):ts)     = (Var v):(takeFirstTerm ts)
+takeFirstTerm ((HPOp f):ts)    = (HPOp f):(takeFirstTerm ts)
+takeFirstTerm ((Punct Pal):ts) = ((Punct Pal):(getInParens 1 ts)
+                                  ++ (Punct Par):(takeFirstTerm ts))
+takeFirstTerm (_:ts)           = []
+takeFirstTerm []               = []
+
+dropFirstTerm :: [Token] -> [Token]
+dropFirstTerm ((Nat n):ts)     = dropFirstTerm ts
+dropFirstTerm ((Var v):ts)     = dropFirstTerm ts
+dropFirstTerm ((HPOp f):ts)    = dropFirstTerm ts
+dropFirstTerm ((Punct Pal):ts) = dropParens 1 ts
+dropFirstTerm ts               = ts
 
 getLPOp :: Token -> Maybe LowPrioOp
 getLPOp (LPOp f) = Just f
@@ -39,15 +68,16 @@ getLPOp _        = Nothing
 -- take a sequence of tokens, and if they form a variable assignment, return
 -- that assignment
 assnify :: [Token] -> Maybe Assignment
-assnify ((Var v):(Con Equals):ts) = fmap (\e -> (v, e)) $ exprify ts
-assnify _                         = Nothing
+assnify ((Var v):(Punct Equals):ts) = fmap (\e -> (v, e)) $ exprify ts
+assnify _                           = Nothing
 
 -- turn a list of tokens into a program
 progrify :: [Token] -> Maybe Program
 progrify list =
   case groupLines list of
-   [Var v, Con Semi]:tList -> fmap (\as -> (v, as)) $ getListAssns tList
-   _                       -> Nothing
+   [Var v, Punct Semi]:tList -> (fmap (\as -> (v, as)) $ getListAssns $
+                                 dropEOF tList)
+   _                         -> Nothing
 
 groupLines :: [Token] -> [[Token]]
 groupLines [] = []
@@ -61,7 +91,12 @@ dropUntil :: (a -> Bool) -> [a] -> [a]
 dropUntil pred list = tail $ dropWhile pred list
 
 notSemiOrEOF :: Token -> Bool
-notSemiOrEOF t = notElem t [Con Semi, EOF]
+notSemiOrEOF t = notElem t [Punct Semi, EOF]
+
+dropEOF :: [[Token]] -> [[Token]]
+dropEOF []         = []
+dropEOF ([EOF]:ts) = []
+dropEOF (t:ts)     = t:(dropEOF ts)
 
 getListAssns :: [[Token]] -> Maybe [Assignment]
 getListAssns []    = Just []
