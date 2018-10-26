@@ -6,6 +6,7 @@ module Tokenise
 
 import Numeric.Natural
 import Data.Char
+import Data.List
 
 import Types
 
@@ -19,22 +20,23 @@ getToken str
     | char == '-'  = Just (LPOp Monus, 1)
     | char == '*'  = Just (HPOp Times, 1)
     | char == ' '  = fmap (\(a,b) -> (a,b+1)) $ getToken $ tail str
-    | char == '='  = Just (Punct Equals, 1)
-    | char == ';'  = Just (Punct Semi, 1)
-    | char == '('  = Just (Punct Pal, 1)
-    | char == ')'  = Just (Punct Par, 1)
-    | otherwise    = readVarName str
+    | char == '='  = Just (Equals, 1)
+    | char == ';'  = Just (Semi, 1)
+    | char == '('  = Just (Pal, 1)
+    | char == ')'  = Just (Par, 1)
+    | otherwise    = readAlphas str
     where char = head str
 
 -- special function for reading variable names
-readVarName :: String -> Maybe (Token, Int)
-readVarName str
-    | length name == 0 = Nothing
-    | otherwise        = Just (Var name, (length name))
-    where name = getVarName str
+readAlphas :: String -> Maybe (Token, Int)
+readAlphas str
+    | length name == 0         = Nothing
+    | isPrefixOf "return" name = Just (Return, 6)
+    | otherwise                = Just (Var name, (length name))
+    where name = getAlphas str
 
-getVarName :: String -> VarName
-getVarName str = takeWhile isAlpha str
+getAlphas :: String -> VarName
+getAlphas str = takeWhile isAlpha str
 
 -- special function for reading natural numbers
 readNat :: String -> Maybe (Token, Int)

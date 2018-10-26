@@ -8,7 +8,6 @@ module Types
        , hpOpFunc
        , VarName
        , ScopeTable
-       , Punctuation(..)
        , Token(..)
        , Program
        , Assignment
@@ -56,24 +55,15 @@ type VarName = String
 -- associating variable names with the values that they hold
 type ScopeTable = HM.HashMap VarName Natural
 
--- defining a data type for "punctuation symbols"
-data Punctuation = Equals | Semi | Pal | Par deriving (Eq)
-
-showPunct :: Punctuation -> String
-showPunct Equals = "="
-showPunct Semi   = ";"
-showPunct Pal    = "("
-showPunct Par    = ")"
-
-instance Show Punctuation where
-  show = showPunct
-
 -- defining a data type for tokens, where EOF means end of file.
 data Token = Nat Natural
            | LPOp LowPrioOp
            | HPOp HighPrioOp
            | Var VarName
-           | Punct Punctuation
+           | Equals -- equals sign
+           | Semi -- semicolon
+           | Pal -- left paren, (
+           | Par -- right paren, )
            | EOF
            deriving (Eq, Show)
 
