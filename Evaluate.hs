@@ -46,7 +46,7 @@ evalAssns assns scope = foldM updateScope scope assns
 -- take a program and a scope, and return the value of the stated variable after
 -- all the assignments have been made in order
 evalProgram :: ScopeTable -> Program -> Maybe Natural
-evalProgram scope (v, assns) = (evalAssns assns scope) >>= (HM.lookup v)
+evalProgram scope (assns, v) = (evalAssns assns scope) >>= (HM.lookup v)
 
 -- evaluate the list of tokens by turning them into a program and then
 -- evaluating that

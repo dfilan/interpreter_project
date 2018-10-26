@@ -31,11 +31,11 @@ getToken str
 readAlphas :: String -> Maybe (Token, Int)
 readAlphas str
     | length name == 0         = Nothing
-    -- | isPrefixOf "return" name = Just (Return, 6)
+    | isPrefixOf "return" name = Just (Return, 6)
     | otherwise                = Just (Var name, (length name))
     where name = getAlphas str
 
-getAlphas :: String -> VarName
+getAlphas :: String -> String
 getAlphas str = takeWhile isAlpha str
 
 -- special function for reading natural numbers

@@ -64,11 +64,12 @@ data Token = Nat Natural
            | Semi -- semicolon
            | Pal -- left paren, (
            | Par -- right paren, )
+           | Return
            | EOF
            deriving (Eq, Show)
 
 -- data types representing the grammar of programs that we accept
-type Program    = (VarName, [Assignment])
+type Program    = ([Assignment], VarName)
 type Assignment = (VarName, Expression)
 data Expression = Expr Term | ExprComb Term LowPrioOp Expression
                 deriving (Eq, Show)

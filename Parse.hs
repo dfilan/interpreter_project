@@ -49,14 +49,14 @@ takeFirstTerm :: [Token] -> [Token]
 takeFirstTerm ((Nat n):ts)  = (Nat n):(takeFirstTerm ts)
 takeFirstTerm ((Var v):ts)  = (Var v):(takeFirstTerm ts)
 takeFirstTerm ((HPOp f):ts) = (HPOp f):(takeFirstTerm ts)
-takeFirstTerm (Pal:ts)      = (Pal:(getInParens 1 ts) ++ Par:(takeFirstTerm ts))
+takeFirstTerm (Pal:ts)      = Pal:(getInParens 1 ts) ++ Par:(takeFirstTerm ts)
 takeFirstTerm (_:ts)        = []
 takeFirstTerm []            = []
 
 dropFirstTerm :: [Token] -> [Token]
-dropFirstTerm ((Nat n):ts)  = dropFirstTerm ts
-dropFirstTerm ((Var v):ts)  = dropFirstTerm ts
-dropFirstTerm ((HPOp f):ts) = dropFirstTerm ts
+dropFirstTerm ((Nat _):ts)  = dropFirstTerm ts
+dropFirstTerm ((Var _):ts)  = dropFirstTerm ts
+dropFirstTerm ((HPOp _):ts) = dropFirstTerm ts
 dropFirstTerm (Pal:ts)      = dropParens 1 ts
 dropFirstTerm ts            = ts
 
@@ -72,10 +72,15 @@ assnify _                   = Nothing
 
 -- turn a list of tokens into a program
 progrify :: [Token] -> Maybe Program
-progrify list =
-  case groupLines list of
-   [Var v, Semi]:tList -> fmap (\as -> (v, as)) $ getListAssns $ dropEOF tList
-   _                   -> Nothing
+progrify list = ((\al v -> (al, v)) <$> (getListAssns' tList)
+                 <*> (readReturnStmt tList))
+    where tList = groupLines list
+
+getListAssns' :: [[Token]] -> Maybe [Assignment]
+getListAssns' = getListAssns . (takeWhile isntReturnStatement)
+
+readReturnStmt :: [[Token]] -> Maybe VarName
+readReturnStmt = readReturnStatement . head . (dropWhile isntReturnStatement)
 
 groupLines :: [Token] -> [[Token]]
 groupLines [] = []
@@ -90,6 +95,17 @@ dropUntil pred list = tail $ dropWhile pred list
 
 notSemiOrEOF :: Token -> Bool
 notSemiOrEOF t = notElem t [Semi, EOF]
+
+isntReturnStatement :: [Token] -> Bool
+isntReturnStatement [] = True
+isntReturnStatement ts = head ts /= Return
+
+readReturnStatement :: [Token] -> Maybe VarName
+readReturnStatement tList
+  | length tList <= 1    = Nothing
+  | head tList /= Return = Nothing
+  | otherwise            = case tList!!1 of Var v -> Just v
+                                            _     -> Nothing
 
 dropEOF :: [[Token]] -> [[Token]]
 dropEOF []         = []
