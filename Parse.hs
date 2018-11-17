@@ -67,7 +67,7 @@ getLPOp _        = Nothing
 -- take a sequence of tokens, and if they form a variable assignment, return
 -- that assignment
 assnify :: [Token] -> Maybe Assignment
-assnify ((Var v):Equals:ts) = fmap (\e -> (v, e)) $ exprify ts
+assnify ((Var v):Assign:ts) = fmap (\e -> (v, e)) $ exprify ts
 assnify _                   = Nothing
 
 -- turn a list of tokens into a program

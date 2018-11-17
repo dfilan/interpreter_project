@@ -5,5 +5,4 @@ Note that all data are natural numbers, so 'subtraction' is actually the monus o
 Changes to the language as defined in the notes:
 - 'Programs' are one line. They consist of a sequence of variable assignments separated by semicolons, followed by a return statement (which must be `return x` for some variable `x`). The interpreter outputs the value of the returned variable after the assignments are made in order.
 - All binary operators are right-associative, so `3 - 5 + 7` = `3 - (5 + 7)` = 0.
-- The assignment operator is written '='
 - You can use parentheses in arithmetic expressions like `(3 - 5) + 7`, which evaluates to 7.

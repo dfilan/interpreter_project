@@ -20,12 +20,21 @@ getToken str
     | char == '-'  = Just (LPOp Monus, 1)
     | char == '*'  = Just (HPOp Times, 1)
     | char == ' '  = fmap (\(a,b) -> (a,b+1)) $ getToken $ tail str
-    | char == '='  = Just (Equals, 1)
+    | char == ':'  = readAssign str
     | char == ';'  = Just (Semi, 1)
     | char == '('  = Just (Pal, 1)
     | char == ')'  = Just (Par, 1)
     | otherwise    = readAlphas str
     where char = head str
+
+-- special function for reading ':=', the assignment operator
+readAssign :: String -> Maybe (Token, Int)
+readAssign str
+    | length str < 2                = Nothing
+    | first == ':' && second == '=' = Just (Assign, 2)
+    | otherwise                     = Nothing
+    where first  = head str
+          second = head $ tail str
 
 -- special function for reading variable names
 readAlphas :: String -> Maybe (Token, Int)

@@ -60,7 +60,7 @@ data Token = Nat Natural
            | LPOp LowPrioOp
            | HPOp HighPrioOp
            | Var VarName
-           | Equals -- equals sign
+           | Assign -- assignment sign, ':='
            | Semi -- semicolon
            | Pal -- left paren, (
            | Par -- right paren, )
