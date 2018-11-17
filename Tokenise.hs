@@ -21,9 +21,11 @@ getToken str
     | char == '*'  = Just (HPOp Times, 1)
     | char == ' '  = fmap (\(a,b) -> (a,b+1)) $ getToken $ tail str
     | char == ':'  = readAssign str
-    | char == ';'  = Just (Semi, 1)
+    | char == ';'  = Just (Sem, 1)
     | char == '('  = Just (Pal, 1)
     | char == ')'  = Just (Par, 1)
+    | char == '{'  = Just (Kel, 1)
+    | char == '}'  = Just (Ker, 1)
     | otherwise    = readAlphas str
     where char = head str
 
@@ -36,10 +38,12 @@ readAssign str
     where first  = head str
           second = head $ tail str
 
--- special function for reading variable names
+-- special function for reading alphabetical sections
 readAlphas :: String -> Maybe (Token, Int)
 readAlphas str
     | length name == 0         = Nothing
+    | isPrefixOf "if" name     = Just (If, 2)
+    | isPrefixOf "while" name  = Just (While, 5)
     | isPrefixOf "return" name = Just (Return, 6)
     | otherwise                = Just (Var name, (length name))
     where name = getAlphas str

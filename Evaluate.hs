@@ -35,20 +35,29 @@ evalExpr (ExprComb term lpOp expr) scope = (liftA2 (lpOpFunc lpOp)
 
 -- take an assignment and a scope, and update the scope with the assignment
 -- but return nothing if the RHS of the assignment is ill-defined
-updateScope :: ScopeTable -> Assignment -> Maybe ScopeTable
-updateScope scope (v, e) = fmap (\n -> HM.insert v n scope) (evalExpr e scope)
+updateScope :: (VarName, Expression) -> ScopeTable -> Maybe ScopeTable
+updateScope (v, e) scope = fmap (\n -> HM.insert v n scope) (evalExpr e scope)
 
--- take a list of assignments and a scope, and return the scope after all the
--- assignments have been made
-evalAssns :: [Assignment] -> ScopeTable -> Maybe ScopeTable
-evalAssns assns scope = foldM updateScope scope assns
-  
--- take a program and a scope, and return the value of the stated variable after
--- all the assignments have been made in order
-evalProgram :: ScopeTable -> Program -> Maybe Natural
-evalProgram scope (assns, v) = (evalAssns assns scope) >>= (HM.lookup v)
+evalProg :: Maybe ScopeTable -> Program -> Maybe Natural
+evalProg _ []                             = Nothing
+evalProg mScope ((Assn ass):sts)          = (evalProg (mScope >>= (updateScope
+                                                                   ass))
+                                             sts)
+evalProg mScope ((IfStmt v sts1):sts2)    = case (mScope >>= (HM.lookup v)) of
+                                             Nothing -> Nothing
+                                             Just 0  -> evalProg mScope sts2
+                                             Just _  -> (evalProg mScope
+                                                         (sts1 ++ sts2))
+evalProg mScope ((WhileStmt v sts1):sts2) = case (mScope >>= (HM.lookup v)) of
+                                             Nothing -> Nothing
+                                             Just 0  -> evalProg mScope sts2
+                                             Just _  -> (evalProg mScope
+                                                         (sts1 ++ (WhileStmt v
+                                                                   sts1):sts2))
+evalProg mScope ((ReturnStmt v):_)        = mScope >>= (HM.lookup v)
+evalProg mScope (NoOp:ts)                 = evalProg mScope ts
 
 -- evaluate the list of tokens by turning them into a program and then
 -- evaluating that
 evalTokens :: [Token] -> Maybe Natural
-evalTokens tokens = (progrify tokens) >>= (evalProgram HM.empty)
+evalTokens tokens = (progrify tokens) >>= (evalProg $ Just HM.empty)

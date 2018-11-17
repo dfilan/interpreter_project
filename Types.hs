@@ -10,7 +10,7 @@ module Types
        , ScopeTable
        , Token(..)
        , Program
-       , Assignment
+       , Statement(..)
        , Expression(..)
        , Term(..)
        , Atom(..)
@@ -61,21 +61,29 @@ data Token = Nat Natural
            | HPOp HighPrioOp
            | Var VarName
            | Assign -- assignment sign, ':='
-           | Semi -- semicolon
+           | Sem -- semicolon, ;
            | Pal -- left paren, (
            | Par -- right paren, )
+           | Kel -- left brace, {
+           | Ker -- right brace, }
+           | If
+           | While
            | Return
            | EOF
            deriving (Eq, Show)
 
 -- data types representing the grammar of programs that we accept
-type Program    = ([Assignment], VarName)
-type Assignment = (VarName, Expression)
+type Program    = [Statement]
+data Statement  = Assn (VarName, Expression)
+                | IfStmt VarName [Statement]
+                | WhileStmt VarName [Statement]
+                | ReturnStmt VarName
+                | NoOp
+                deriving (Eq, Show)
 data Expression = Expr Term | ExprComb Term LowPrioOp Expression
                 deriving (Eq, Show)
 -- below, ParenTrm Expression means an expression with parens on either side
-data Term       = Trm Atom | TrmComb Atom HighPrioOp Term
-                | ParenTrm Expression
+data Term       = Trm Atom | TrmComb Atom HighPrioOp Term | ParenTrm Expression
                 deriving (Eq, Show)
 data Atom       = NatAtom Natural | VarAtom VarName
                 deriving (Eq, Show)
