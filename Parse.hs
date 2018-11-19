@@ -7,15 +7,19 @@ module Parse
 import Types
 
 -- TODO: write getInBrackets and dropBrackets in nice divide style
+-- TODO: rename "mTerm" etc.
+-- TODO: throw error when brackets are mismatched
 
 -- takes a sequence of tokens, and if they form a term, then see what term it is
-termify :: [Token] -> Maybe Term
-termify [Nat x]               = Just (Trm $ NatAtom x)
-termify [Var v]               = Just (Trm $ VarAtom v)
+termify :: [Token] -> Eval Term
+termify [Nat x]               = Right (Trm $ NatAtom x)
+termify [Var v]               = Right (Trm $ VarAtom v)
 termify ((Nat x):(HPOp f):ts) = fmap (TrmComb (NatAtom x) f) $ termify ts
 termify ((Var v):(HPOp f):ts) = fmap (TrmComb (VarAtom v) f) $ termify ts
 termify (Pal:ts)              = fmap ParenTrm $ exprify $ getInParens 1 ts
-termify _                     = Nothing
+termify _                     = Left "During interpretation, tried to make a\
+                                      \ term out of something that is not a\
+                                      \ term."
 
 -- first Token argument is left bracket, next Token argument is right bracket
 -- Note: this does something weird when the first integer argument is a negative
@@ -67,7 +71,7 @@ dropBraces = dropBrackets Kel Ker
 
 -- takes a sequence of tokens, and if the initial segment forms an expression,
 -- see what expression it is.
-exprify :: [Token] -> Maybe Expression
+exprify :: [Token] -> Eval Expression
 exprify tokens
     | restTokens == [] = fmap Expr mTerm
     | nextToken == EOF = fmap Expr mTerm
@@ -93,13 +97,13 @@ dropFirstTerm ((HPOp _):ts) = dropFirstTerm ts
 dropFirstTerm (Pal:ts)      = dropParens 1 ts
 dropFirstTerm ts            = ts
 
-getLPOp :: Token -> Maybe LowPrioOp
-getLPOp (LPOp f) = Just f
-getLPOp _        = Nothing
+getLPOp :: Token -> Eval LowPrioOp
+getLPOp (LPOp f) = Right f
+getLPOp _        = Left "Tried to make a LPOp out of something that isn't one."
 
 -- take a sequence of tokens, and if the initial segment forms a statement,
 -- return that statement
-stmtify :: [Token] -> Maybe Statement
+stmtify :: [Token] -> Eval Statement
 stmtify ((Var v):Assign:ts)            = fmap (\e -> Assn (v,e)) $ exprify ts
 stmtify (If:Pal:(Var v):Par:Kel:ts)    = (fmap (\l -> IfStmt v l)
                                           $ progrify
@@ -107,12 +111,14 @@ stmtify (If:Pal:(Var v):Par:Kel:ts)    = (fmap (\l -> IfStmt v l)
 stmtify (While:Pal:(Var v):Par:Kel:ts) = (fmap (\l -> WhileStmt v l)
                                           $ progrify
                                           $ getInBraces 1 ts)
-stmtify (Return:(Var v):_)             = Just (ReturnStmt v)
-stmtify []                             = Just NoOp
-stmtify _                              = Nothing
+stmtify (Return:(Var v):_)             = Right (ReturnStmt v)
+stmtify []                             = Right NoOp
+stmtify _                              = Left "Tried to make a statement out of\
+                                               \ something that isn't a\
+                                               \ statement."
 
 -- turn a list of tokens into a program
-progrify ::  [Token] -> Maybe [Statement]
+progrify ::  [Token] -> Eval [Statement]
 progrify = (mapM stmtify) . group
 
 -- group tokens by clumping all the ones that form a single statement together
