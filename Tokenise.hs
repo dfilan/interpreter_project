@@ -51,7 +51,7 @@ readAlphas str
     | isPrefixOf "while" name  = Right (While, 5)
     | isPrefixOf "return" name = Right (Return, 6)
     | otherwise                = Right (Var name, (length name))
-    where name = getAlphas str
+  where name = getAlphas str
 
 getAlphas :: String -> String
 getAlphas str = takeWhile isAlpha str
@@ -59,7 +59,7 @@ getAlphas str = takeWhile isAlpha str
 -- special function for reading natural numbers
 readNat :: String -> Eval (Token, Int)
 readNat str = Right (Nat n, diff)
-    where (n, diff) = readNat' str
+  where (n, diff) = readNat' str
 
 readNat' :: String -> (Natural, Int)
 readNat' str = makePair (fromIntegral . digitsToNum) length $ getDigits str
@@ -80,8 +80,8 @@ stringToTokens str
     | otherwise           = (helper mToken
                              $ ((fmap drop mNextPos) <*> (Right str)
                                 >>= stringToTokens))
-    where mToken   = fmap fst $ getToken str
-          mNextPos = fmap snd $ getToken str
+  where mToken   = fmap fst $ getToken str
+        mNextPos = fmap snd $ getToken str
 
 helper :: Eval a -> Eval [a] -> Eval [a]
 helper maybeToken maybeList = fmap (:) maybeToken <*> maybeList
