@@ -42,7 +42,7 @@ evalExpr (ExprComb term lpOp expr) scope = (liftA2 (lpOpFunc lpOp)
 -- take an assignment and a scope, and update the scope with the assignment
 -- but return an error if the RHS of the assignment is ill-defined
 updateScope :: (VarName, Expression) -> ScopeTable -> Eval ScopeTable
-updateScope (v, e) scope = fmap (\n -> HM.insert v n scope) (evalExpr e scope)
+updateScope (v, e) scope = (\n -> HM.insert v n scope) <$> (evalExpr e scope)
 
 -- evaluates a program
 evalProg :: Eval ScopeTable -> Program -> Eval Natural

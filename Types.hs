@@ -99,23 +99,6 @@ data Atom       = NatAtom Natural | VarAtom VarName
 
 type Eval a = Either String a
 
--- newtype Eval a = Eval (Either String a)
---                deriving (Eq, Show)
-                        
--- instance Functor Eval where
---     fmap f (Eval eval) = Eval (fmap f eval)
-    
--- instance Applicative Eval where
---     pure v                      = Eval (Right v)
---     (Eval func) <*> (Eval eval) = case func of Left msg -> Eval (Left msg)
---                                                Right f  -> fmap f (Eval eval)
-
--- instance Monad Eval where
---     (Eval eval) >>= k = case eval of Left msg -> Eval (Left msg)
---                                      Right v  -> k v
---     return v          = Eval (return v)
---     fail msg          = Eval (Left msg)
-
 -- A program is a list of routines, one of which is main.
 -- Routines take a finite number of arguments, and return one real number
 -- Atoms can be function calls

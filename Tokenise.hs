@@ -21,7 +21,7 @@ getToken str
     | char == '+'  = Right (LPOp Plus, 1)
     | char == '-'  = Right (LPOp Monus, 1)
     | char == '*'  = Right (HPOp Times, 1)
-    | char == ' '  = fmap (\(a,b) -> (a,b+1)) $ getToken $ tail str
+    | char == ' '  = (\(a,b) -> (a,b+1)) <$> (getToken $ tail str)
     | char == ':'  = readAssign str
     | char == ';'  = Right (Sem, 1)
     | char == '('  = Right (Pal, 1)
@@ -78,10 +78,10 @@ stringToTokens :: String -> Eval [Token]
 stringToTokens str
     | mToken == Right EOF = Right [EOF]
     | otherwise           = (helper mToken
-                             $ ((fmap drop mNextPos) <*> (Right str)
+                             $ ((drop <$> mNextPos) <*> (Right str)
                                 >>= stringToTokens))
-  where mToken   = fmap fst $ getToken str
-        mNextPos = fmap snd $ getToken str
+  where mToken   = fst <$> (getToken str)
+        mNextPos = snd <$> (getToken str)
 
 helper :: Eval a -> Eval [a] -> Eval [a]
-helper maybeToken maybeList = fmap (:) maybeToken <*> maybeList
+helper maybeToken maybeList = (:) <$> maybeToken <*> maybeList
