@@ -12,8 +12,6 @@ import qualified Data.HashMap.Lazy as HM
 import Types
 import Parse
 
--- TODO: rename "mScope" etc.
-
 -- evaluates an atom
 evalAtom :: Atom -> ScopeTable -> Eval Natural
 evalAtom (NatAtom n) _     = Right n
@@ -31,7 +29,6 @@ evalTerm (TrmComb atom f term) scope = (liftA2 (hpOpFunc f)
                                         (evalTerm term scope))
 evalTerm (ParenTrm expr) scope       = evalExpr expr scope
 
-
 -- evaluate an expression
 evalExpr :: Expression -> ScopeTable -> Eval Natural
 evalExpr (Expr term) scope               = evalTerm term scope
@@ -48,25 +45,25 @@ updateScope (v, e) scope = (\n -> HM.insert v n scope) <$> (evalExpr e scope)
 evalProg :: Eval ScopeTable -> Program -> Eval Natural
 evalProg _ []                             = Left "Tried to evaluate an empty\
                                                   \ program."
-evalProg mScope ((Assn ass):sts)          = (evalProg (mScope >>= (updateScope
+evalProg eScope ((Assn ass):sts)          = (evalProg (eScope >>= (updateScope
                                                                    ass))
                                              sts)
-evalProg mScope ((IfStmt v sts1):sts2)    = case (mScope >>= (evalLookup .
+evalProg eScope ((IfStmt v sts1):sts2)    = case (eScope >>= (evalLookup .
                                                               (HM.lookup v))) of
                                              Left msg -> Left msg
-                                             Right 0  -> evalProg mScope sts2
-                                             Right _  -> (evalProg mScope
+                                             Right 0  -> evalProg eScope sts2
+                                             Right _  -> (evalProg eScope
                                                           (sts1 ++ sts2))
-evalProg mScope ((WhileStmt v sts1):sts2) = case (mScope >>= (evalLookup .
+evalProg eScope ((WhileStmt v sts1):sts2) = case (eScope >>= (evalLookup .
                                                               (HM.lookup v))) of
                                              Left msg -> Left msg
-                                             Right 0  -> evalProg mScope sts2
-                                             Right _  -> (evalProg mScope
+                                             Right 0  -> evalProg eScope sts2
+                                             Right _  -> (evalProg eScope
                                                           (sts1 ++ (WhileStmt v
                                                                     sts1):sts2))
-evalProg mScope ((ReturnStmt v):_)        = mScope >>= (evalLookup
+evalProg eScope ((ReturnStmt v):_)        = eScope >>= (evalLookup
                                                         . (HM.lookup v))
-evalProg mScope (NoOp:ts)                 = evalProg mScope ts
+evalProg eScope (NoOp:ts)                 = evalProg eScope ts
 
 -- evaluate the list of tokens by turning them into a program and then
 -- evaluating that

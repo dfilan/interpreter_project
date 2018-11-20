@@ -10,8 +10,6 @@ import Data.List
 
 import Types
 
--- TODO: rename "mToken" etc.
-
 -- take the input, get a token and the offest to next token. Fail if the
 -- character doesn't represent a valid token.
 getToken :: String -> Eval (Token, Int)
@@ -76,12 +74,12 @@ digitsToNum = foldl (\acc n -> n + 10 * acc) 0
 -- turn input into a list of tokens
 stringToTokens :: String -> Eval [Token]
 stringToTokens str
-    | mToken == Right EOF = Right [EOF]
-    | otherwise           = (helper mToken
-                             $ ((drop <$> mNextPos) <*> (Right str)
+    | eToken == Right EOF = Right [EOF]
+    | otherwise           = (helper eToken
+                             $ ((drop <$> eNextPos) <*> (Right str)
                                 >>= stringToTokens))
-  where mToken   = fst <$> (getToken str)
-        mNextPos = snd <$> (getToken str)
+  where eToken   = fst <$> (getToken str)
+        eNextPos = snd <$> (getToken str)
 
 helper :: Eval a -> Eval [a] -> Eval [a]
-helper maybeToken maybeList = (:) <$> maybeToken <*> maybeList
+helper evalToken evalList = (:) <$> evalToken <*> evalList

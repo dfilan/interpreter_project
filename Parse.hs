@@ -6,8 +6,6 @@ module Parse
 
 import Types
 
--- TODO: rename "mTerm" etc.
-
 -- takes a sequence of tokens, and if they form a term, then see what term it is
 termify :: [Token] -> Eval Term
 termify [Nat x]               = Right (Trm $ NatAtom x)
@@ -55,15 +53,15 @@ dropBraces n ts = snd <$> (splitByBrackets Kel Ker n ts)
 -- see what expression it is.
 exprify :: [Token] -> Eval Expression
 exprify tokens
-    | restTokens == Right [] = Expr <$> mTerm
-    | nextToken == Right EOF = Expr <$> mTerm
-    | nextToken == Right Sem = Expr <$> mTerm
-    | otherwise              = ((ExprComb <$> mTerm)
-                                <*> (nextToken >>= getLPOp)
-                                <*> (restTokens >>= (exprify . tail)))
-  where mTerm      = (takeFirstTerm tokens) >>= termify
-        restTokens = dropFirstTerm tokens
-        nextToken  = head <$> restTokens
+    | eRestTokens == Right [] = Expr <$> eTerm
+    | eNextToken == Right EOF = Expr <$> eTerm
+    | eNextToken == Right Sem = Expr <$> eTerm
+    | otherwise               = ((ExprComb <$> eTerm)
+                                <*> (eNextToken >>= getLPOp)
+                                <*> (eRestTokens >>= (exprify . tail)))
+  where eTerm       = (takeFirstTerm tokens) >>= termify
+        eRestTokens = dropFirstTerm tokens
+        eNextToken  = head <$> restTokens
 
 splitByFirstTerm :: [Token] -> Eval ([Token], [Token])
 splitByFirstTerm ((Nat n):ts)  = ((mapFst $ (:) (Nat n))
