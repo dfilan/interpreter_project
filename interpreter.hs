@@ -9,10 +9,8 @@ import Evaluate
 -- take in input. convert it to tokens, then evaluate those tokens as a program.
 -- then print the output
 
--- TODO: rename "mTokens"
-
 main = do
     input <- getLine
-    let mTokens = stringToTokens input
-        val     = mTokens >>= evalTokens
+    let eTokens = stringToTokens input
+        val     = eTokens >>= evalTokens
     putStrLn $ show val
