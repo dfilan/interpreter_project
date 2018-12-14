@@ -12,6 +12,7 @@ termify [Nat x]               = Right (Trm $ NatAtom x)
 termify [Var v]               = Right (Trm $ VarAtom v)
 termify ((Nat x):(HPOp f):ts) = (TrmComb (NatAtom x) f) <$> termify ts
 termify ((Var v):(HPOp f):ts) = (TrmComb (VarAtom v) f) <$> termify ts
+-- termify
 termify (Pal:ts)              = ParenTrm <$> ((getInParens 1 ts) >>= exprify)
 termify _                     = Left "During interpretation, tried to make a\
                                       \ term out of something that is not a\
@@ -61,7 +62,7 @@ exprify tokens
                                 <*> (eRestTokens >>= (exprify . tail)))
   where eTerm       = (takeFirstTerm tokens) >>= termify
         eRestTokens = dropFirstTerm tokens
-        eNextToken  = head <$> restTokens
+        eNextToken  = head <$> eRestTokens
 
 splitByFirstTerm :: [Token] -> Eval ([Token], [Token])
 splitByFirstTerm ((Nat n):ts)  = ((mapFst $ (:) (Nat n))
