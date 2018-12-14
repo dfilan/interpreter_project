@@ -1,3 +1,6 @@
+-- TODO (minor): allow else statements
+-- TODO (minor): allow expressions to be returned
+
 -- all the types we'll be exporting to other files
 -- note: the structure of some of these types closely relates to the grammar we
 -- will allow
@@ -7,9 +10,12 @@ module Types
        , lpOpFunc
        , hpOpFunc
        , VarName
+       , RutnName
        , ScopeTable
+       , RutnTable
        , Token(..)
        , Program
+       , Routine
        , Statement(..)
        , Expression(..)
        , Term(..)
@@ -49,18 +55,28 @@ hpOpFunc Times m n = m * n
 
 -- defining a data type for variable names.
 -- secretly, they're actually going to be strings that consist entirely of
--- alphabetic unicode characters
+-- alphabetic unicode characters that don't start with upper or title case
 type VarName = String
+
+-- defining a data type for routine names.
+-- secretly, they're actually going to be strings that consist entirely of
+-- alphabetic unicode characters that start with *upper* (or title) case
+type RutnName = String
 
 -- while we're interpreting the program, we're going to keep a scope table
 -- associating variable names with the values that they hold
 type ScopeTable = HM.HashMap VarName Natural
+
+-- we're also going to keep a routine table associating routine names with the
+-- routines that they're associated with
+type RutnTable = HM.HashMap RutnName Routine
 
 -- defining a data type for tokens, where EOF means end of file.
 data Token = Nat Natural
            | LPOp LowPrioOp
            | HPOp HighPrioOp
            | Var VarName
+           | Rutn RutnName
            | Assign -- assignment sign, ':='
            | Sem -- semicolon, ;
            | Pal -- left paren, (
@@ -70,15 +86,21 @@ data Token = Nat Natural
            | If
            | While
            | Return
+           | Main
            | EOF
            deriving (Eq, Show)
 
 -- data types representing the grammar of programs that we accept
-type Program    = [Statement]
--- type Routine    = Routine { isMain  :: Bool
---                           , numArgs :: Natural
---                           , 
---                           }
+type Program = (Routine, [Routine])
+-- a program is a main routine and some auxiliary routines.
+type Routine = (Natural, [Statement])
+-- routines can be main or not, this is encoded in where they're located in the
+-- program data structure. Right now, they have a number of arguments,
+-- but once there are types there will be instead a list of types of arguments.
+-- so maybe currently we can have an arbitrary list whose length is the number
+-- of arguments?
+-- inside them is their body, which is a list of statements.
+-- once we have types, we'll have to say what type they return.
 data Statement  = Assn (VarName, Expression)
                 | IfStmt VarName [Statement]
                 | WhileStmt VarName [Statement]
@@ -90,7 +112,7 @@ data Expression = Expr Term | ExprComb Term LowPrioOp Expression
 -- below, ParenTrm Expression means an expression with parens on either side
 data Term       = Trm Atom | TrmComb Atom HighPrioOp Term | ParenTrm Expression
                 deriving (Eq, Show)
-data Atom       = NatAtom Natural | VarAtom VarName
+data Atom       = NatAtom Natural | VarAtom VarName | RutnAtom RutnName [Atom]
                 deriving (Eq, Show)
 
 -- data type that allows for errors that can show up during execution. Because
@@ -98,32 +120,3 @@ data Atom       = NatAtom Natural | VarAtom VarName
 -- will only see the first error that shows up during execution
 
 type Eval a = Either String a
-
--- A program is a list of routines, one of which is main.
--- Routines take a finite number of arguments, and return one real number
--- Atoms can be function calls
--- Routines have local scope
-
-
--- example routines:
--- main F(n) {
---        v := 1;
---        k := 1;
---        c := n - k;
---        while (c) {
---            k := k + 1;
---            v := v * k;
---            c := n - k;
---               };
---        return v;
--- }
-
--- G(n) {
---     v := 1;
---     if (n) {
---         x := n - 1;
---         w := G(x);
---         v := v*w;
---            };
---     return v;
---      }

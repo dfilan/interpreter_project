@@ -16,7 +16,7 @@ getToken :: String -> Eval (Token, Int)
 getToken str
     | str == []    = Right (EOF, 0)
     | isDigit char = readNat str
-    | char == '+'  = Right (LPOp Plus, 1)
+    | char == '+'  = Right (LPOp Plus,  1)
     | char == '-'  = Right (LPOp Monus, 1)
     | char == '*'  = Right (HPOp Times, 1)
     | char == ' '  = (\(a,b) -> (a,b+1)) <$> (getToken $ tail str)
@@ -45,10 +45,11 @@ readAlphas str
     | length name == 0         = Left "Used disallowed character, or character\
                                        \ in disallowed context (e.g. equals\
                                        \ sign without a colon)."
-    | isPrefixOf "if" name     = Right (If, 2)
-    | isPrefixOf "while" name  = Right (While, 5)
+    | isPrefixOf "if" name     = Right (If,     2)
+    | isPrefixOf "while" name  = Right (While,  5)
     | isPrefixOf "return" name = Right (Return, 6)
-    | otherwise                = Right (Var name, (length name))
+    | isUpper $ head name      = Right (Rutn name, length name)
+    | otherwise                = Right (Var name,  length name)
   where name = getAlphas str
 
 getAlphas :: String -> String
@@ -75,11 +76,11 @@ digitsToNum = foldl (\acc n -> n + 10 * acc) 0
 stringToTokens :: String -> Eval [Token]
 stringToTokens str
     | eToken == Right EOF = Right [EOF]
-    | otherwise           = (helper eToken
+    | otherwise           = (eCons eToken
                              $ ((drop <$> eNextPos) <*> (Right str)
                                 >>= stringToTokens))
   where eToken   = fst <$> (getToken str)
         eNextPos = snd <$> (getToken str)
 
-helper :: Eval a -> Eval [a] -> Eval [a]
-helper evalToken evalList = (:) <$> evalToken <*> evalList
+eCons :: Eval a -> Eval [a] -> Eval [a]
+eCons evalToken evalList = (:) <$> evalToken <*> evalList
