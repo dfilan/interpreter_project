@@ -3,7 +3,7 @@ main F(n) {
      if(n){
 	x := n - 1;
 	w := F(x);
-	v := v*w
+	v := n*w
      }
      return v
 }
