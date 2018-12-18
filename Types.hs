@@ -1,4 +1,3 @@
--- TODO: use tuple sections
 -- TODO: convert everything to LambdaCase
 -- TODO (minor): allow else statements
 -- TODO (minor): allow expressions to be returned

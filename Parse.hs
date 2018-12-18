@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, TupleSections #-}
 
 -- exports progify, which takes a list of tokens and returns a valid program
 -- (as defined in Types).
@@ -135,11 +135,11 @@ getLPOp _        = Left "Tried to make a LPOp out of something that isn't one."
 -- take a sequence of tokens, and if the initial segment forms a statement,
 -- return that statement
 stmtify :: [Token] -> Eval Statement
-stmtify ((Var v):Assign:ts)            = (\e -> Assn (v,e)) <$> (exprify ts)
-stmtify (If:Pal:(Var v):Par:Kel:ts)    = ((\l -> IfStmt v l)
-                                          <$> ((getInBraces 1 ts) >>= blocify))
-stmtify (While:Pal:(Var v):Par:Kel:ts) = ((\l -> WhileStmt v l)
-                                          <$> ((getInBraces 1 ts) >>= blocify))
+stmtify ((Var v):Assign:ts)            = (Assn . (v,)) <$> (exprify ts)
+stmtify (If:Pal:(Var v):Par:Kel:ts)    = ((IfStmt v) <$> ((getInBraces 1 ts)
+                                                          >>= blocify))
+stmtify (While:Pal:(Var v):Par:Kel:ts) = ((WhileStmt v) <$> ((getInBraces 1 ts)
+                                                             >>= blocify))
 stmtify (Return:(Var v):_)             = Right (ReturnStmt v)
 stmtify [Sem]                          = Right NoOp
 stmtify [EOF]                          = Right NoOp
@@ -172,10 +172,10 @@ splitByFirstStmt (t:ts)   = (mapFst $ (:) t) <$> (splitByFirstStmt ts)
 -- take a list of tokens, and if the initial segment forms a routine, return
 -- that routine.
 rutnify :: [Token] -> Eval (RutnName, Routine)
-rutnify ((Rutn r):Pal:ts) = (\rutn -> (r, rutn)) <$> eRutn
+rutnify ((Rutn r):Pal:ts) = (r,) <$> eRutn
   where eArgList = getInParens 1 ts >>= splitByCommas >>= mapM getVarName
         eBlock   = dropParens 1 ts >>= getInBraces 0 >>= blocify
-        eRutn    = (\a b -> (a,b)) <$> eArgList <*> eBlock
+        eRutn    = (,) <$> eArgList <*> eBlock
 rutnify _                 = Left "Tried to make a routine out of a segment that\
                                   \ didn't start with a routine name followed\
                                   \ by an open paren."
