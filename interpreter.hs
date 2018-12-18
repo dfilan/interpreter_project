@@ -32,3 +32,4 @@ main = do
     args          <- getArgs
     programString <- readFile $ head args
     putStrLn $ show $ runProgram programString $ readNatList (args!!1)
+    -- putStrLn $ show programString

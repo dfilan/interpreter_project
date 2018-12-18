@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 
--- Evaluates a list of tokens and a list of natural numbers by forming a program -- out of it and then evaluating the program.
+-- Evaluates a list of tokens and a list of natural numbers by forming a program
+-- out of it and then evaluating the program.
 module Evaluate
        ( evalProg
        ) where

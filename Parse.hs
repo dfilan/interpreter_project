@@ -39,23 +39,22 @@ splitByCommas = \case{
 -- takes a sequence of tokens, and if the initial segment forms a term, then
 -- sees what term it is
 termify :: [Token] -> Eval Term
-termify ((Nat n):ts)      = case head ts of
-                             HPOp f -> ((TrmComb (NatAtom n) f)
-                                        <$> (termify $ tail ts))
-                             _      -> Right (Trm $ NatAtom n)
-termify ((Var v):ts)      = case head ts of
-                             HPOp f -> ((TrmComb (VarAtom v) f)
-                                        <$> (termify $ tail ts))
-                             _      -> Right (Trm $ VarAtom v)
+termify ((Nat n):ts)      = case ts of
+                             (HPOp f):_ -> ((TrmComb (NatAtom n) f)
+                                            <$> (termify $ tail ts))
+                             _          -> Right (Trm $ NatAtom n)
+termify ((Var v):ts)      = case ts of
+                             (HPOp f):_ -> ((TrmComb (VarAtom v) f)
+                                            <$> (termify $ tail ts))
+                             _          -> Right (Trm $ VarAtom v)
 termify ((Rutn r):Pal:ts) = let input = ((Rutn r):Pal:ts)
-                            in case head <$> dropParens 1 ts of
-                             Right (HPOp f) -> do
-                                                 rest     <- dropParens 1 ts
-                                                 nextTerm <- termify $ tail rest
-                                                 rutnAtom <- atomify input
-                                                 return (TrmComb rutnAtom f
-                                                         nextTerm)
-                             _              -> Trm <$> atomify input
+                            in case dropParens 1 ts of
+                             Right ((HPOp f):_) -> do
+                               rest     <- dropParens 1 ts
+                               nextTerm <- termify $ tail rest
+                               rutnAtom <- atomify input
+                               return (TrmComb rutnAtom f nextTerm)
+                             _                  -> Trm <$> atomify input
 termify (Pal:ts)          = ParenTrm <$> ((getInParens 1 ts) >>= exprify)
 termify _                 = Left "During interpretation, tried to make a term\
                                   \ out of something that is not a term."
@@ -110,16 +109,15 @@ splitByFirstTerm ((Nat n):ts)  = ((mapFst $ (:) (Nat n))
                                   <$> (splitByFirstTerm ts))
 splitByFirstTerm ((Var v):ts)  = ((mapFst $ (:) (Var v))
                                   <$> (splitByFirstTerm ts))
+splitByFirstTerm ((Rutn r):ts) = ((mapFst $ (:) (Rutn r))
+                                  <$> (splitByFirstTerm ts))
 splitByFirstTerm ((HPOp f):ts) = ((mapFst $ (:) (HPOp f))
                                   <$> (splitByFirstTerm ts))
 splitByFirstTerm (Pal:ts)      = do
-                               palConsContent <- (((:) Pal)
-                                                  <$> (getInParens 1 ts))
-                               parConsRecurse <- ((mapFst $ (:) Par)
-                                                  <$> ((dropParens 1 ts)
-                                                       >>= splitByFirstTerm))
-                               (Right (mapFst ((++) palConsContent)
-                                       parConsRecurse))
+  palConsContent <- ((:) Pal) <$> (getInParens 1 ts)
+  parConsRecurse <- (mapFst $ (:) Par) <$> ((dropParens 1 ts)
+                                            >>= splitByFirstTerm)
+  Right (mapFst ((++) palConsContent) parConsRecurse)
 splitByFirstTerm ts            = Right ([], ts)
 
 takeFirstTerm :: [Token] -> Eval [Token]
@@ -199,7 +197,7 @@ rutnLookup :: RutnName -> RutnTable -> Eval Routine
 rutnLookup r tab = case (HM.lookup r tab) of {
   Just rutn -> Right rutn;
   Nothing   -> Left "Tried to look up non-existent routine."
-                                             }
+  }
 
 -- take a routine table and a list of tokens
 -- get the first routine, rutnify it, put it into the routine table, then

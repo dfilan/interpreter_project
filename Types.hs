@@ -1,9 +1,11 @@
 -- TODO: convert everything to LambdaCase
--- TODO (minor): allow else statements
--- TODO (minor): allow expressions to be returned
--- TODO (minor): get rid of the tuple in Statement
--- TODO (minor): refactor expressions, terms, and atoms to be the same thing
--- globally
+-- TODO: allow else statements
+-- TODO: allow expressions to be returned
+-- TODO: get rid of the tuple in Statement
+-- TODO: refactor expressions, terms, and atoms to be the same thing globally
+-- TODO: get rid of 'head' from my code
+-- TODO: use List1 in cases where I promise I don't have an empty list
+-- TODO: factor out NoOp statements from existence
 
 -- all the types we'll be exporting to other files
 -- note: the structure of some of these types closely relates to the grammar we

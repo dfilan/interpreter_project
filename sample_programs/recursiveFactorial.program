@@ -1,0 +1,9 @@
+main F(n) {
+     v := 0; v := v+1;
+     if(n){
+	x := n - 1;
+	w := F(x);
+	v := v*w
+     }
+     return v
+}
