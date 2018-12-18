@@ -26,6 +26,7 @@ getToken str
     | char == ')'  = Right (Par, 1)
     | char == '{'  = Right (Kel, 1)
     | char == '}'  = Right (Ker, 1)
+    | char == ','  = Right (Com, 1)
     | otherwise    = readAlphas str
     where char = head str
 

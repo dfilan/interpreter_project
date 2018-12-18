@@ -1,5 +1,9 @@
+-- TODO: convert everything to LambdaCase
 -- TODO (minor): allow else statements
 -- TODO (minor): allow expressions to be returned
+-- TODO (minor): get rid of the tuple in Statement
+-- TODO (minor): refactor expressions, terms, and atoms to be the same thing
+-- globally
 
 -- all the types we'll be exporting to other files
 -- note: the structure of some of these types closely relates to the grammar we
@@ -15,6 +19,7 @@ module Types
        , RutnTable
        , Token(..)
        , Program
+       , Block
        , Routine
        , Statement(..)
        , Expression(..)
@@ -67,22 +72,19 @@ type RutnName = String
 -- associating variable names with the values that they hold
 type ScopeTable = HM.HashMap VarName Natural
 
--- we're also going to keep a routine table associating routine names with the
--- routines that they're associated with
-type RutnTable = HM.HashMap RutnName Routine
-
 -- defining a data type for tokens, where EOF means end of file.
 data Token = Nat Natural
-           | LPOp LowPrioOp
-           | HPOp HighPrioOp
            | Var VarName
            | Rutn RutnName
+           | LPOp LowPrioOp
+           | HPOp HighPrioOp
            | Assign -- assignment sign, ':='
-           | Sem -- semicolon, ;
-           | Pal -- left paren, (
-           | Par -- right paren, )
-           | Kel -- left brace, {
-           | Ker -- right brace, }
+           | Sem -- semicolon, ';'
+           | Pal -- left paren, '('
+           | Par -- right paren, ')'
+           | Kel -- left brace, '{'
+           | Ker -- right brace, '}'
+           | Com -- comma, ','
            | If
            | While
            | Return
@@ -91,32 +93,42 @@ data Token = Nat Natural
            deriving (Eq, Show)
 
 -- data types representing the grammar of programs that we accept
-type Program = (Routine, [Routine])
+
 -- a program is a main routine and some auxiliary routines.
-type Routine = (Natural, [Statement])
--- routines can be main or not, this is encoded in where they're located in the
--- program data structure. Right now, they have a number of arguments,
--- but once there are types there will be instead a list of types of arguments.
--- so maybe currently we can have an arbitrary list whose length is the number
--- of arguments?
--- inside them is their body, which is a list of statements.
--- once we have types, we'll have to say what type they return.
+-- the main routine is kept in the first slot, the routine table in the second
+-- slot stores both the main routine and all other routines.
+type Program = (Routine, RutnTable)
+
+-- a block is just a bunch of statements
+type Block = [Statement]
+
+-- a routine is a list of the routine's arguments, and then a block of
+-- statements.
+type Routine = ([VarName], Block)
+
+-- we're also going to keep a routine table associating routine names with the
+-- routines that they're associated with
+type RutnTable = HM.HashMap RutnName Routine
+
 data Statement  = Assn (VarName, Expression)
                 | IfStmt VarName [Statement]
                 | WhileStmt VarName [Statement]
                 | ReturnStmt VarName
                 | NoOp
                 deriving (Eq, Show)
+-- TODO: factor out NoOp somehow
+
 data Expression = Expr Term | ExprComb Term LowPrioOp Expression
                 deriving (Eq, Show)
+
 -- below, ParenTrm Expression means an expression with parens on either side
 data Term       = Trm Atom | TrmComb Atom HighPrioOp Term | ParenTrm Expression
                 deriving (Eq, Show)
+
 data Atom       = NatAtom Natural | VarAtom VarName | RutnAtom RutnName [Atom]
                 deriving (Eq, Show)
 
 -- data type that allows for errors that can show up during execution. Because
 -- of the structure of the either type, somebody running an invalid program
 -- will only see the first error that shows up during execution
-
 type Eval a = Either String a

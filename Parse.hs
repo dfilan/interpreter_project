@@ -1,22 +1,64 @@
--- exports progrify, which takes a list of tokens and returns a valid program
+{-# LANGUAGE LambdaCase #-}
+
+-- exports progify, which takes a list of tokens and returns a valid program
 -- (as defined in Types).
 module Parse
-       ( progrify
+       ( progify
+       , rutnLookup
        ) where
 
 import Types
+import qualified Data.HashMap.Lazy as HM
 
--- takes a sequence of tokens, and if they form a term, then see what term it is
+-- takes a sequence of tokens, and if the initial segment forms an atom, see
+-- what atom it is
+atomify :: [Token] -> Eval Atom
+atomify = \case{
+    ((Nat n):_)   -> Right (NatAtom n);
+    ((Var v):_)   -> Right (VarAtom v);
+    ((Rutn r):ts) -> RutnAtom r <$> (getInParens 0 ts >>= splitByCommas
+                                     >>= mapM atomify);
+    _             -> Left "Tried to read a non-atom as an atom. Perhaps\
+                           \ something other than an atom was used as an\
+                           \ argument to a routine?";
+                             }
+
+splitByCommas :: [Token] -> Eval [[Token]]
+splitByCommas = \case{
+  []                -> Right [[]];
+  (Com:ts)          -> splitByCommas ts;
+  ((Rutn r):Pal:ts) ->
+    let eFirstBit = (flip (++) [Par]) . ((++) [Rutn r, Pal]) <$> (getInParens 1
+                                                                  ts)
+    in (:) <$> eFirstBit <*> (dropParens 1 ts >>= splitByCommas);
+  (t:ts)            ->
+    let addToFirst = (((:) t) . head) <$> splitByCommas ts
+    in (:) <$> addToFirst <*> (tail <$> splitByCommas ts);
+                     }
+
+-- takes a sequence of tokens, and if the initial segment forms a term, then
+-- sees what term it is
 termify :: [Token] -> Eval Term
-termify [Nat x]               = Right (Trm $ NatAtom x)
-termify [Var v]               = Right (Trm $ VarAtom v)
-termify ((Nat x):(HPOp f):ts) = (TrmComb (NatAtom x) f) <$> termify ts
-termify ((Var v):(HPOp f):ts) = (TrmComb (VarAtom v) f) <$> termify ts
--- termify
-termify (Pal:ts)              = ParenTrm <$> ((getInParens 1 ts) >>= exprify)
-termify _                     = Left "During interpretation, tried to make a\
-                                      \ term out of something that is not a\
-                                      \ term."
+termify ((Nat n):ts)      = case head ts of
+                             HPOp f -> ((TrmComb (NatAtom n) f)
+                                        <$> (termify $ tail ts))
+                             _      -> Right (Trm $ NatAtom n)
+termify ((Var v):ts)      = case head ts of
+                             HPOp f -> ((TrmComb (VarAtom v) f)
+                                        <$> (termify $ tail ts))
+                             _      -> Right (Trm $ VarAtom v)
+termify ((Rutn r):Pal:ts) = let input = ((Rutn r):Pal:ts)
+                            in case head <$> dropParens 1 ts of
+                             Right (HPOp f) -> do
+                                                 rest     <- dropParens 1 ts
+                                                 nextTerm <- termify $ tail rest
+                                                 rutnAtom <- atomify input
+                                                 return (TrmComb rutnAtom f
+                                                         nextTerm)
+                             _              -> Trm <$> atomify input
+termify (Pal:ts)          = ParenTrm <$> ((getInParens 1 ts) >>= exprify)
+termify _                 = Left "During interpretation, tried to make a term\
+                                  \ out of something that is not a term."
 
 -- first Token argument is left bracket, next Token argument is right bracket
 -- first component of output is the material inside brackets,
@@ -25,15 +67,14 @@ termify _                     = Left "During interpretation, tried to make a\
 splitByBrackets :: Token -> Token -> Integer -> [Token] -> Eval ([Token],
                                                                  [Token])
 splitByBrackets l r n ts
-    | ts == []               = Left "Mismatched parentheses"
+    | ts == []               = Left "Mismatched brackets, or no brackets where\
+                                     \ they were expected."
     | n == 0 && head ts == l = splitByBrackets l r 1 $ tail ts
-    | head ts == l           = ((mapFst $ (:) l) <$> (splitByBrackets l r (n+1)
-                                                      $ tail ts))
+    | head ts == l           = (mapFst $ (:) l) <$> splitBrackets (n+1)
     | n == 1 && head ts == r = Right ([], tail ts)
-    | head ts == r           = ((mapFst $ (:) r) <$> (splitByBrackets l r (n-1)
-                                                      $ tail ts))
-    | otherwise              = ((mapFst $ (:) $ head ts)
-                                <$> (splitByBrackets l r n $ tail ts))
+    | head ts == r           = (mapFst $ (:) r) <$> splitBrackets (n-1)
+    | otherwise              = (mapFst $ (:) $ head ts) <$> splitBrackets n
+    where splitBrackets = \n -> splitByBrackets l r n $ tail ts
 
 mapFst :: (a -> b) -> (a, c) -> (b, c)
 mapFst f (x, y) = (f x, y)
@@ -96,9 +137,9 @@ getLPOp _        = Left "Tried to make a LPOp out of something that isn't one."
 stmtify :: [Token] -> Eval Statement
 stmtify ((Var v):Assign:ts)            = (\e -> Assn (v,e)) <$> (exprify ts)
 stmtify (If:Pal:(Var v):Par:Kel:ts)    = ((\l -> IfStmt v l)
-                                          <$> ((getInBraces 1 ts) >>= progrify))
+                                          <$> ((getInBraces 1 ts) >>= blocify))
 stmtify (While:Pal:(Var v):Par:Kel:ts) = ((\l -> WhileStmt v l)
-                                          <$> ((getInBraces 1 ts) >>= progrify))
+                                          <$> ((getInBraces 1 ts) >>= blocify))
 stmtify (Return:(Var v):_)             = Right (ReturnStmt v)
 stmtify [Sem]                          = Right NoOp
 stmtify [EOF]                          = Right NoOp
@@ -106,9 +147,9 @@ stmtify _                              = Left "Tried to make a statement out of\
                                                \ something that isn't a\
                                                \ statement."
 
--- turn a list of tokens into a program
-progrify ::  [Token] -> Eval [Statement]
-progrify ts = (group ts) >>= (mapM stmtify)
+-- turn a list of tokens into a block
+blocify ::  [Token] -> Eval [Statement]
+blocify ts = (group ts) >>= (mapM stmtify)
 
 -- group tokens by clumping all the ones that form a single statement together
 group :: [Token] -> Eval [[Token]]
@@ -127,3 +168,63 @@ splitByFirstStmt (Kel:ts) = (,) <$> eBracedContents <*> (dropBraces 1 ts)
   where eBracedContents = (((flip (++) [Ker]) . ((:) Kel))
                            <$> (getInBraces 1 ts))
 splitByFirstStmt (t:ts)   = (mapFst $ (:) t) <$> (splitByFirstStmt ts)
+
+-- take a list of tokens, and if the initial segment forms a routine, return
+-- that routine.
+rutnify :: [Token] -> Eval (RutnName, Routine)
+rutnify ((Rutn r):Pal:ts) = (\rutn -> (r, rutn)) <$> eRutn
+  where eArgList = getInParens 1 ts >>= splitByCommas >>= mapM getVarName
+        eBlock   = dropParens 1 ts >>= getInBraces 0 >>= blocify
+        eRutn    = (\a b -> (a,b)) <$> eArgList <*> eBlock
+rutnify _                 = Left "Tried to make a routine out of a segment that\
+                                  \ didn't start with a routine name followed\
+                                  \ by an open paren."
+
+getVarName :: [Token] -> Eval VarName
+getVarName [Var v] = Right v
+getVarName _       = Left "Expected a variable name, didn't get one."
+
+-- takes a list of tokens and returns a program
+progify :: [Token] -> Eval Program
+progify (Main:(Rutn r):ts) = do {
+  table   <- progify' HM.empty ((Rutn r):ts);
+  routine <- rutnLookup r table;
+  return (routine, table)
+  }
+progify _                  = Left "Expected first routine to be main."
+
+-- look up a routine, returning something in Eval Routine rather than Maybe
+-- Routine
+rutnLookup :: RutnName -> RutnTable -> Eval Routine
+rutnLookup r tab = case (HM.lookup r tab) of {
+  Just rutn -> Right rutn;
+  Nothing   -> Left "Tried to look up non-existent routine."
+                                             }
+
+-- take a routine table and a list of tokens
+-- get the first routine, rutnify it, put it into the routine table, then
+-- progify' the rest with the updated routine table
+-- do this until you get an EOF
+progify' :: RutnTable -> [Token] -> Eval RutnTable
+progify' rt [EOF] = Right rt
+progify' rt ts    = do {
+  split       <- splitByFirstRutn ts;
+  newRutnPair <- rutnify $ fst split;
+  progify' (uncurry HM.insert newRutnPair rt) $ snd split
+  }
+                    
+-- take a list of tokens, return a tuple. first element is a list of tokens
+-- comprising the first routine, second element is a list of all the other
+-- tokens
+splitByFirstRutn :: [Token] -> Eval ([Token], [Token])
+splitByFirstRutn = \case{
+  (EOF:_)           -> Right ([EOF], []);
+  ((Rutn r):Pal:ts) -> do {
+    parenSplit <- splitByBrackets Pal Par 1 ts;
+    braceSplit <- splitByBrackets Kel Ker 0 $ snd parenSplit;
+    return (([Rutn r, Pal] ++ (fst parenSplit) ++ [Par, Kel] ++ (fst braceSplit)
+             ++ [Ker]),
+            snd braceSplit)
+    };
+  _                 -> Left "Error when dividing code into routines"
+  }
