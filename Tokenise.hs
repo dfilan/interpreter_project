@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -- exports stringToTokens, which takes a string and turns it into a list of
 -- tokens
 module Tokenise
@@ -14,7 +16,6 @@ import Types
 -- character doesn't represent a valid token.
 getToken :: String -> Eval (Token, Int)
 getToken str
-    | str == []    = Right (EOF, 0)
     | isDigit char = readNat str
     | char == '+'  = Right (LPOp Plus,  1)
     | char == '-'  = Right (LPOp Monus, 1)
@@ -76,13 +77,11 @@ digitsToNum = foldl (\acc n -> n + 10 * acc) 0
 
 -- turn input into a list of tokens
 stringToTokens :: String -> Eval [Token]
-stringToTokens str
-    | eToken == Right EOF = Right [EOF]
-    | otherwise           = (eCons eToken
-                             $ ((drop <$> eNextPos) <*> (Right str)
-                                >>= stringToTokens))
-  where eToken   = fst <$> (getToken str)
-        eNextPos = snd <$> (getToken str)
-
-eCons :: Eval a -> Eval [a] -> Eval [a]
-eCons evalToken evalList = (:) <$> evalToken <*> evalList
+stringToTokens = \case {
+  []  -> Right [];
+  str -> do {
+    (token, nextPos) <- getToken str;
+    tokeniseRest     <- stringToTokens $ drop nextPos str;
+    return (token:tokeniseRest);
+    };
+  }

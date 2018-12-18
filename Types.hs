@@ -2,10 +2,10 @@
 -- bit
 -- TODO: allow else statements
 -- TODO: allow expressions to be returned
--- TODO: refactor expressions, terms, and atoms to be the same thing globally
+-- TODO: refactor expressions, terms, and atoms to be the same thing globally?
 -- TODO: get rid of 'head' from my code
 -- TODO: use List1 in cases where I promise I don't have an empty list
--- TODO: factor out NoOp statements, EOF from existence
+-- TODO: factor out NoOp statements from existence
 
 -- all the types we'll be exporting to other files
 -- note: the structure of some of these types closely relates to the grammar we
@@ -91,7 +91,6 @@ data Token = Nat Natural
            | While
            | Return
            | Main
-           | EOF
            deriving (Eq, Show)
 
 -- data types representing the grammar of programs that we accept
@@ -119,7 +118,6 @@ data Statement  = Assn VarName Expression
                 | ReturnStmt VarName
                 | NoOp
                 deriving (Eq, Show)
--- TODO: factor out NoOp somehow
 
 data Expression = Expr Term | ExprComb Term LowPrioOp Expression
                 deriving (Eq, Show)

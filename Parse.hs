@@ -99,7 +99,6 @@ dropBraces n ts = snd <$> (splitByBrackets Kel Ker n ts)
 exprify :: [Token] -> Eval Expression
 exprify tokens
     | eRestTokens == Right [] = Expr <$> eTerm
-    | eNextToken == Right EOF = Expr <$> eTerm
     | eNextToken == Right Sem = Expr <$> eTerm
     | otherwise               = ((ExprComb <$> eTerm)
                                 <*> (eNextToken >>= getLPOp)
@@ -146,7 +145,6 @@ stmtify = \case{
                                                      >>= blocify);
   Return:(Var v):_             -> Right $ ReturnStmt v;
   [Sem]                        -> Right NoOp;
-  [EOF]                        -> Right NoOp;
   _                            -> Left "Tried to make a statement out of\
                                         \ something that isn't a statement.";
                }
@@ -166,7 +164,6 @@ group ts = ((:) <$> (fst <$> (splitByFirstStmt ts))
 splitByFirstStmt :: [Token] -> Eval ([Token], [Token])
 splitByFirstStmt = \case{
   []     -> Right ([], []);
-  EOF:_  -> Right ([EOF], []);
   Sem:ts -> Right ([Sem], ts);
   Kel:ts -> let eBracedContents = (((flip (++) [Ker]) . ((:) Kel))
                                    <$> (getInBraces 1 ts))
@@ -209,9 +206,9 @@ rutnLookup r tab = case (HM.lookup r tab) of {
 -- take a routine table and a list of tokens
 -- get the first routine, rutnify it, put it into the routine table, then
 -- progify' the rest with the updated routine table
--- do this until you get an EOF
+-- do this until you get an empty string
 progify' :: RutnTable -> [Token] -> Eval RutnTable
-progify' rt [EOF] = Right rt
+progify' rt [] = Right rt
 progify' rt ts    = do {
   split       <- splitByFirstRutn ts;
   newRutnPair <- rutnify $ fst split;
@@ -223,7 +220,7 @@ progify' rt ts    = do {
 -- tokens
 splitByFirstRutn :: [Token] -> Eval ([Token], [Token])
 splitByFirstRutn = \case{
-  EOF:_           -> Right ([EOF], []);
+  []              -> Right ([], []);
   (Rutn r):Pal:ts -> do {
     parenSplit <- splitByBrackets Pal Par 1 ts;
     braceSplit <- splitByBrackets Kel Ker 0 $ snd parenSplit;
