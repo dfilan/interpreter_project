@@ -54,7 +54,7 @@ evalExpr scTab ruTab = \case{
 -- evaluate a block
 evalBloc :: ScopeTable -> RutnTable -> Block -> Eval Natural
 evalBloc scTab ruTab = \case{
-  (Assn (v,e)):sts        -> do {
+  (Assn v e):sts          -> do {
     newScTab <- updateScope scTab ruTab (v,e);
     evalBloc newScTab ruTab sts
     };

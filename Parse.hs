@@ -121,7 +121,7 @@ splitByFirstTerm (t:ts) = case t of {
                                               >>= splitByFirstTerm);
     Right (mapFst ((++) palConsContent) parConsRecurse);
     };
-  _      -> Right ([], ts);
+  _      -> Right ([], t:ts);
   }
     where consRecurse = (\t -> (mapFst $ (:) t) <$> (splitByFirstTerm ts))
 
@@ -139,9 +139,9 @@ getLPOp _        = Left "Tried to make a LPOp out of something that isn't one."
 -- return that statement
 stmtify :: [Token] -> Eval Statement
 stmtify = \case{
-  (Var v):Assign:ts            -> (Assn . (v,)) <$> (exprify ts);
-  If:Pal:(Var v):Par:Kel:ts    -> (IfStmt v) <$> ((getInBraces 1 ts)
-                                                  >>= blocify);
+  (Var v):Assign:ts            -> (Assn v)      <$> (exprify ts);
+  If:Pal:(Var v):Par:Kel:ts    -> (IfStmt v)    <$> ((getInBraces 1 ts)
+                                                     >>= blocify);
   While:Pal:(Var v):Par:Kel:ts -> (WhileStmt v) <$> ((getInBraces 1 ts)
                                                      >>= blocify);
   Return:(Var v):_             -> Right $ ReturnStmt v;
