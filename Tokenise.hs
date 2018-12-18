@@ -19,7 +19,7 @@ getToken str
     | char == '+'  = Right (LPOp Plus,  1)
     | char == '-'  = Right (LPOp Monus, 1)
     | char == '*'  = Right (HPOp Times, 1)
-    | char == ' '  = (\(a,b) -> (a,b+1)) <$> (getToken $ tail str)
+    | isSpace char = (\(a,b) -> (a,b+1)) <$> (getToken $ tail str)
     | char == ':'  = readAssign str
     | char == ';'  = Right (Sem, 1)
     | char == '('  = Right (Pal, 1)
