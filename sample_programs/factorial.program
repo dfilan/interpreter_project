@@ -7,5 +7,5 @@ main F(n) {
 	   v := v*(k+0);
 	   c := n - k
      }
-     return v
+     return 1*(v+0)
 }

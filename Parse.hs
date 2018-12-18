@@ -143,7 +143,7 @@ stmtify = \case{
                                                      >>= blocify);
   While:Pal:(Var v):Par:Kel:ts -> (WhileStmt v) <$> ((getInBraces 1 ts)
                                                      >>= blocify);
-  Return:(Var v):_             -> Right $ ReturnStmt v;
+  Return:ts                    -> ReturnStmt    <$> (exprify ts) ;
   _                            -> Left "Tried to make a statement out of\
                                         \ something that isn't a statement.";
                }

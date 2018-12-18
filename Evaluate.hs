@@ -72,7 +72,7 @@ evalBloc scTab ruTab = \case{
       _ -> evalBloc scTab ruTab $ sts1 ++ (WhileStmt v sts1):sts2;
       };
     };
-  (ReturnStmt v):sts      -> varLookup v scTab;
+  (ReturnStmt e):sts      -> evalExpr scTab ruTab e;
   []                      -> Left "Tried to evaluate a block with no return\
                                    \ statement."
   }

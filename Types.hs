@@ -1,7 +1,6 @@
 -- TODO: split things like atomify into splitting up tokens, parsing the first
 -- bit
 -- TODO: allow else statements
--- TODO: allow expressions to be returned
 -- TODO: refactor expressions, terms, and atoms to be the same thing globally?
 -- TODO: get rid of 'head' from my code
 -- TODO: use List1 in cases where I promise I don't have an empty list
@@ -114,7 +113,7 @@ type RutnTable = HM.HashMap RutnName Routine
 data Statement  = Assn VarName Expression
                 | IfStmt VarName [Statement]
                 | WhileStmt VarName [Statement]
-                | ReturnStmt VarName
+                | ReturnStmt Expression
                 deriving (Eq, Show)
 
 data Expression = Expr Term | ExprComb Term LowPrioOp Expression
