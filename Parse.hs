@@ -14,50 +14,54 @@ import qualified Data.HashMap.Lazy as HM
 -- what atom it is
 atomify :: [Token] -> Eval Atom
 atomify = \case{
-    ((Nat n):_)   -> Right (NatAtom n);
-    ((Var v):_)   -> Right (VarAtom v);
-    ((Rutn r):ts) -> RutnAtom r <$> (getInParens 0 ts >>= splitByCommas
-                                     >>= mapM atomify);
-    _             -> Left "Tried to read a non-atom as an atom. Perhaps\
-                           \ something other than an atom was used as an\
-                           \ argument to a routine?";
-                             }
+    (Nat n):_   -> Right (NatAtom n);
+    (Var v):_   -> Right (VarAtom v);
+    (Rutn r):ts -> RutnAtom r <$> (getInParens 0 ts >>= splitByCommas
+                                   >>= mapM atomify);
+    _           -> Left "Tried to read a non-atom as an atom. Perhaps\
+                         \ something other than an atom was used as an\
+                         \ argument to a routine?";
+                           }
 
 splitByCommas :: [Token] -> Eval [[Token]]
 splitByCommas = \case{
-  []                -> Right [[]];
-  (Com:ts)          -> splitByCommas ts;
-  ((Rutn r):Pal:ts) ->
+  []              -> Right [[]];
+  Com:ts          -> splitByCommas ts;
+  (Rutn r):Pal:ts ->
     let eFirstBit = (flip (++) [Par]) . ((++) [Rutn r, Pal]) <$> (getInParens 1
                                                                   ts)
     in (:) <$> eFirstBit <*> (dropParens 1 ts >>= splitByCommas);
-  (t:ts)            ->
+  t:ts            ->
     let addToFirst = (((:) t) . head) <$> splitByCommas ts
     in (:) <$> addToFirst <*> (tail <$> splitByCommas ts);
-                     }
+  }
 
 -- takes a sequence of tokens, and if the initial segment forms a term, then
 -- sees what term it is
 termify :: [Token] -> Eval Term
-termify ((Nat n):ts)      = case ts of
-                             (HPOp f):_ -> ((TrmComb (NatAtom n) f)
-                                            <$> (termify $ tail ts))
-                             _          -> Right (Trm $ NatAtom n)
-termify ((Var v):ts)      = case ts of
-                             (HPOp f):_ -> ((TrmComb (VarAtom v) f)
-                                            <$> (termify $ tail ts))
-                             _          -> Right (Trm $ VarAtom v)
-termify ((Rutn r):Pal:ts) = let input = ((Rutn r):Pal:ts)
-                            in case dropParens 1 ts of
-                             Right ((HPOp f):_) -> do
-                               rest     <- dropParens 1 ts
-                               nextTerm <- termify $ tail rest
-                               rutnAtom <- atomify input
-                               return (TrmComb rutnAtom f nextTerm)
-                             _                  -> Trm <$> atomify input
-termify (Pal:ts)          = ParenTrm <$> ((getInParens 1 ts) >>= exprify)
-termify _                 = Left "During interpretation, tried to make a term\
-                                  \ out of something that is not a term."
+termify = \case{
+  (Nat n):ts      -> case ts of {
+    (HPOp f):_ -> (TrmComb (NatAtom n) f) <$> (termify $ tail ts);
+    _          -> Right (Trm $ NatAtom n);
+    };
+  (Var v):ts      -> case ts of {
+    (HPOp f):_ -> (TrmComb (VarAtom v) f) <$> (termify $ tail ts);
+    _          -> Right (Trm $ VarAtom v);
+    };
+  (Rutn r):Pal:ts -> let input = ((Rutn r):Pal:ts)
+                     in case dropParens 1 ts of {
+                       Right ((HPOp f):_) -> do {
+                          rest     <- dropParens 1 ts;
+                          nextTerm <- termify $ tail rest;
+                          rutnAtom <- atomify input;
+                          return (TrmComb rutnAtom f nextTerm);
+                          };
+                       _                  -> Trm <$> atomify input;
+                       };
+  Pal:ts          -> ParenTrm <$> ((getInParens 1 ts) >>= exprify);
+  _               -> Left "Tried to make a term out of something that is not a\
+                           \term.";
+               }
 
 -- first Token argument is left bracket, next Token argument is right bracket
 -- first component of output is the material inside brackets,
@@ -105,20 +109,21 @@ exprify tokens
         eNextToken  = head <$> eRestTokens
 
 splitByFirstTerm :: [Token] -> Eval ([Token], [Token])
-splitByFirstTerm ((Nat n):ts)  = ((mapFst $ (:) (Nat n))
-                                  <$> (splitByFirstTerm ts))
-splitByFirstTerm ((Var v):ts)  = ((mapFst $ (:) (Var v))
-                                  <$> (splitByFirstTerm ts))
-splitByFirstTerm ((Rutn r):ts) = ((mapFst $ (:) (Rutn r))
-                                  <$> (splitByFirstTerm ts))
-splitByFirstTerm ((HPOp f):ts) = ((mapFst $ (:) (HPOp f))
-                                  <$> (splitByFirstTerm ts))
-splitByFirstTerm (Pal:ts)      = do
-  palConsContent <- ((:) Pal) <$> (getInParens 1 ts)
-  parConsRecurse <- (mapFst $ (:) Par) <$> ((dropParens 1 ts)
-                                            >>= splitByFirstTerm)
-  Right (mapFst ((++) palConsContent) parConsRecurse)
-splitByFirstTerm ts            = Right ([], ts)
+splitByFirstTerm []     = Right ([],[])
+splitByFirstTerm (t:ts) = case t of {
+  Nat n  -> consRecurse $ Nat n;
+  Var v  -> consRecurse $ Var v;
+  Rutn r -> consRecurse $ Rutn r;
+  HPOp f -> consRecurse $ HPOp f;
+  Pal    -> do {
+    palConsContent <- ((:) Pal) <$> (getInParens 1 ts);
+    parConsRecurse <- (mapFst $ (:) Par) <$> ((dropParens 1 ts)
+                                              >>= splitByFirstTerm);
+    Right (mapFst ((++) palConsContent) parConsRecurse);
+    };
+  _      -> Right ([], ts);
+  }
+    where consRecurse = (\t -> (mapFst $ (:) t) <$> (splitByFirstTerm ts))
 
 takeFirstTerm :: [Token] -> Eval [Token]
 takeFirstTerm = (fmap fst) . splitByFirstTerm
@@ -133,18 +138,18 @@ getLPOp _        = Left "Tried to make a LPOp out of something that isn't one."
 -- take a sequence of tokens, and if the initial segment forms a statement,
 -- return that statement
 stmtify :: [Token] -> Eval Statement
-stmtify ((Var v):Assign:ts)            = (Assn . (v,)) <$> (exprify ts)
-stmtify (If:Pal:(Var v):Par:Kel:ts)    = ((IfStmt v) <$> ((getInBraces 1 ts)
-                                                          >>= blocify))
-stmtify (While:Pal:(Var v):Par:Kel:ts) = ((WhileStmt v) <$> ((getInBraces 1 ts)
-                                                             >>= blocify))
-stmtify (Return:(Var v):_)             = Right (ReturnStmt v)
-stmtify [Sem]                          = Right NoOp
-stmtify [EOF]                          = Right NoOp
-stmtify _                              = Left "Tried to make a statement out of\
-                                               \ something that isn't a\
-                                               \ statement."
-
+stmtify = \case{
+  (Var v):Assign:ts            -> (Assn . (v,)) <$> (exprify ts);
+  If:Pal:(Var v):Par:Kel:ts    -> (IfStmt v) <$> ((getInBraces 1 ts)
+                                                  >>= blocify);
+  While:Pal:(Var v):Par:Kel:ts -> (WhileStmt v) <$> ((getInBraces 1 ts)
+                                                     >>= blocify);
+  Return:(Var v):_             -> Right $ ReturnStmt v;
+  [Sem]                        -> Right NoOp;
+  [EOF]                        -> Right NoOp;
+  _                            -> Left "Tried to make a statement out of\
+                                        \ something that isn't a statement.";
+               }
 -- turn a list of tokens into a block
 blocify ::  [Token] -> Eval [Statement]
 blocify ts = (group ts) >>= (mapM stmtify)
@@ -159,13 +164,15 @@ group ts = ((:) <$> (fst <$> (splitByFirstStmt ts))
 -- comprising the first statement, second element is a list of all the other
 -- tokens
 splitByFirstStmt :: [Token] -> Eval ([Token], [Token])
-splitByFirstStmt []       = Right ([], [])
-splitByFirstStmt (EOF:_)  = Right ([EOF], [])
-splitByFirstStmt (Sem:ts) = Right ([Sem], ts)
-splitByFirstStmt (Kel:ts) = (,) <$> eBracedContents <*> (dropBraces 1 ts)
-  where eBracedContents = (((flip (++) [Ker]) . ((:) Kel))
-                           <$> (getInBraces 1 ts))
-splitByFirstStmt (t:ts)   = (mapFst $ (:) t) <$> (splitByFirstStmt ts)
+splitByFirstStmt = \case{
+  []     -> Right ([], []);
+  EOF:_  -> Right ([EOF], []);
+  Sem:ts -> Right ([Sem], ts);
+  Kel:ts -> let eBracedContents = (((flip (++) [Ker]) . ((:) Kel))
+                                   <$> (getInBraces 1 ts))
+            in (,) <$> eBracedContents <*> (dropBraces 1 ts);
+  t:ts   -> (mapFst $ (:) t) <$> (splitByFirstStmt ts);
+                        }
 
 -- take a list of tokens, and if the initial segment forms a routine, return
 -- that routine.
@@ -216,13 +223,13 @@ progify' rt ts    = do {
 -- tokens
 splitByFirstRutn :: [Token] -> Eval ([Token], [Token])
 splitByFirstRutn = \case{
-  (EOF:_)           -> Right ([EOF], []);
-  ((Rutn r):Pal:ts) -> do {
+  EOF:_           -> Right ([EOF], []);
+  (Rutn r):Pal:ts -> do {
     parenSplit <- splitByBrackets Pal Par 1 ts;
     braceSplit <- splitByBrackets Kel Ker 0 $ snd parenSplit;
     return (([Rutn r, Pal] ++ (fst parenSplit) ++ [Par, Kel] ++ (fst braceSplit)
              ++ [Ker]),
             snd braceSplit)
     };
-  _                 -> Left "Error when dividing code into routines"
+  _               -> Left "Error when dividing code into routines"
   }
