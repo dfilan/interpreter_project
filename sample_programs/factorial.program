@@ -1,0 +1,11 @@
+main F(n) {
+     v := 1;
+     k := 1;
+     c := n - k;
+     while (c) {
+     	   k := k + 1;
+	   v := v*k;
+	   c := n - k
+     }
+     return v
+}
