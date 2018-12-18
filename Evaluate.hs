@@ -55,7 +55,7 @@ evalBloc :: ScopeTable -> RutnTable -> Block -> Eval Natural
 evalBloc scTab ruTab = \case{
   (Assn (v,e)):sts        -> do {
     newScTab <- updateScope scTab ruTab (v,e);
-    evalBloc newScTab ruTab stmts
+    evalBloc newScTab ruTab sts
     };
   (IfStmt v sts1):sts2    -> do {
     val <- varLookup v scTab;
@@ -81,13 +81,13 @@ evalBloc scTab ruTab = \case{
 -- but return an error if the RHS of the assignment is ill-defined
 updateScope :: (ScopeTable -> RutnTable -> (VarName, Expression)
                 -> Eval ScopeTable)
-updateScope scTab ruTab (v,e) = (\n -> HM.insert v n scope) <$> (evalExpr scTab
+updateScope scTab ruTab (v,e) = (\n -> HM.insert v n scTab) <$> (evalExpr scTab
                                                                  ruTab e)
 
 -- evaluate a routine
 evalRutn :: RutnTable -> Routine -> [Natural] -> Eval Natural
 evalRutn ruTab (vars, block) args
- | length args == length vars = evalBloc (mkScTab vars args) rutnTab block
+ | length args == length vars = evalBloc (mkScTab vars args) ruTab block
  | otherwise                  = Left "Provided the wrong number of arguments to\
                                       \ a routine."
 
