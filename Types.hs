@@ -1,3 +1,4 @@
+-- TODO: use tuple sections
 -- TODO: convert everything to LambdaCase
 -- TODO (minor): allow else statements
 -- TODO (minor): allow expressions to be returned
@@ -99,12 +100,13 @@ data Token = Nat Natural
 -- slot stores both the main routine and all other routines.
 type Program = (Routine, RutnTable)
 
--- a block is just a bunch of statements
-type Block = [Statement]
-
 -- a routine is a list of the routine's arguments, and then a block of
 -- statements.
 type Routine = ([VarName], Block)
+
+-- a block is just a bunch of statements, one of which should probably be a
+-- return statement
+type Block = [Statement]
 
 -- we're also going to keep a routine table associating routine names with the
 -- routines that they're associated with
