@@ -49,6 +49,7 @@ readAlphas str
     | isPrefixOf "if" name     = Right (If,     2)
     | isPrefixOf "while" name  = Right (While,  5)
     | isPrefixOf "return" name = Right (Return, 6)
+    | isPrefixOf "main" name   = Right (Main,   4)
     | isUpper $ head name      = Right (Rutn name, length name)
     | otherwise                = Right (Var name,  length name)
   where name = getAlphas str
