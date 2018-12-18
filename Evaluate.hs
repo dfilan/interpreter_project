@@ -73,7 +73,6 @@ evalBloc scTab ruTab = \case{
       };
     };
   (ReturnStmt v):sts      -> varLookup v scTab;
-  NoOp:sts                -> evalBloc scTab ruTab sts;
   []                      -> Left "Tried to evaluate a block with no return\
                                    \ statement."
   }

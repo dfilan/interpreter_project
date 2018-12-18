@@ -144,13 +144,18 @@ stmtify = \case{
   While:Pal:(Var v):Par:Kel:ts -> (WhileStmt v) <$> ((getInBraces 1 ts)
                                                      >>= blocify);
   Return:(Var v):_             -> Right $ ReturnStmt v;
-  [Sem]                        -> Right NoOp;
   _                            -> Left "Tried to make a statement out of\
                                         \ something that isn't a statement.";
                }
+
 -- turn a list of tokens into a block
 blocify ::  [Token] -> Eval [Statement]
-blocify ts = (group ts) >>= (mapM stmtify)
+blocify ts = (group' ts) >>= (mapM stmtify)
+
+-- filter the output of group to only include 'statements' that aren't just a
+-- single sem
+group' :: [Token] -> Eval [[Token]]
+group' = (fmap $ filter $ (/=) [Sem]) . group
 
 -- group tokens by clumping all the ones that form a single statement together
 group :: [Token] -> Eval [[Token]]
