@@ -15,13 +15,13 @@ import Types
 import Parse
 
 -- evaluates an atom
-evalAtom :: ScopeTable -> RutnTable -> Atom -> Eval Natural
-evalAtom scTab ruTab = \case{
+evalAtom :: RutnTable -> ScopeTable -> Atom -> Eval Natural
+evalAtom ruTab scTab = \case{
   NatAtom n       -> Right n;
   VarAtom v       -> varLookup v scTab;
   RutnAtom r args -> do {
     routine   <- rutnLookup r ruTab;
-    argValues <- mapM (evalAtom scTab ruTab) args;
+    argValues <- mapM (evalAtom ruTab scTab) args;
     evalRutn ruTab routine argValues
     };
   }
@@ -35,59 +35,59 @@ varLookup v tab = case (HM.lookup v tab) of {
   }
 
 -- evaluates a term
-evalTerm :: ScopeTable -> RutnTable -> Term -> Eval Natural
-evalTerm scTab ruTab = \case{
-  Trm atom            -> evalAtom scTab ruTab atom;
-  TrmComb atom f term -> (liftA2 (hpOpFunc f) (evalAtom scTab ruTab atom)
-                          $ evalTerm scTab ruTab term);
-  ParenTrm expr       -> evalExpr scTab ruTab expr;
+evalTerm :: RutnTable -> ScopeTable -> Term -> Eval Natural
+evalTerm ruTab scTab = \case{
+  Trm atom            -> evalAtom ruTab scTab atom;
+  TrmComb atom f term -> (liftA2 (hpOpFunc f) (evalAtom ruTab scTab atom)
+                          $ evalTerm ruTab scTab term);
+  ParenTrm expr       -> evalExpr ruTab scTab expr;
   }
 
 -- evaluate an expression
-evalExpr :: ScopeTable -> RutnTable -> Expression -> Eval Natural
-evalExpr scTab ruTab = \case{
-  Expr term            -> evalTerm scTab ruTab term;
-  ExprComb term f expr -> (liftA2 (lpOpFunc f) (evalTerm scTab ruTab term)
-                           $ evalExpr scTab ruTab expr);
+evalExpr :: RutnTable -> ScopeTable -> Expression -> Eval Natural
+evalExpr ruTab scTab = \case{
+  Expr term            -> evalTerm ruTab scTab term;
+  ExprComb term f expr -> (liftA2 (lpOpFunc f) (evalTerm ruTab scTab term)
+                           $ evalExpr ruTab scTab expr);
   }
 
 -- evaluate a block
-evalBloc :: ScopeTable -> RutnTable -> Block -> Eval Natural
-evalBloc scTab ruTab = \case{
+evalBloc :: RutnTable -> ScopeTable -> Block -> Eval Natural
+evalBloc ruTab scTab = \case{
   (Assn v e):sts          -> do {
-    newScTab <- updateScope scTab ruTab (v,e);
-    evalBloc newScTab ruTab sts
+    newScTab <- updateScope ruTab scTab v e;
+    evalBloc ruTab newScTab sts
     };
   (IfStmt v sts1):sts2    -> do {
     val <- varLookup v scTab;
     case val of {
-      0 -> evalBloc scTab ruTab sts2;
-      _ -> evalBloc scTab ruTab $ sts1 ++ sts2;
+      0 -> evalBloc ruTab scTab sts2;
+      _ -> evalBloc ruTab scTab $ sts1 ++ sts2;
       };
     };
   (WhileStmt v sts1):sts2 -> do {
     val <- varLookup v scTab;
     case val of {
-      0 -> evalBloc scTab ruTab sts2;
-      _ -> evalBloc scTab ruTab $ sts1 ++ (WhileStmt v sts1):sts2;
+      0 -> evalBloc ruTab scTab sts2;
+      _ -> evalBloc ruTab scTab $ sts1 ++ (WhileStmt v sts1):sts2;
       };
     };
-  (ReturnStmt e):sts      -> evalExpr scTab ruTab e;
+  (ReturnStmt e):sts      -> evalExpr ruTab scTab e;
   []                      -> Left "Tried to evaluate a block with no return\
                                    \ statement."
   }
 
 -- take an assignment and a scope, and update the scope with the assignment
 -- but return an error if the RHS of the assignment is ill-defined
-updateScope :: (ScopeTable -> RutnTable -> (VarName, Expression)
+updateScope :: (RutnTable -> ScopeTable -> VarName -> Expression
                 -> Eval ScopeTable)
-updateScope scTab ruTab (v,e) = (\n -> HM.insert v n scTab) <$> (evalExpr scTab
-                                                                 ruTab e)
+updateScope ruTab scTab v = (fmap (\n -> HM.insert v n scTab)) . (evalExpr ruTab
+                                                                  scTab)
 
 -- evaluate a routine
 evalRutn :: RutnTable -> Routine -> [Natural] -> Eval Natural
 evalRutn ruTab (vars, block) args
- | length args == length vars = evalBloc (mkScTab vars args) ruTab block
+ | length args == length vars = evalBloc ruTab (mkScTab vars args) block
  | otherwise                  = Left "Provided the wrong number of arguments to\
                                       \ a routine."
 
