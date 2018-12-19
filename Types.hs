@@ -1,6 +1,5 @@
 -- TODO: split things like atomify into splitting up tokens, parsing the first
 -- bit
--- TODO: allow if, while statements to take arbitrary expressions
 -- TODO: add for loops
 -- TODO?: refactor expressions, terms, and atoms to be the same thing globally
 -- TODO?: get rid of 'head' from my code
@@ -101,8 +100,8 @@ type Block = [Statement]
 type RutnTable = HM.HashMap RutnName Routine
 
 data Statement  = Assn VarName Expression
-                | ITEStmt VarName Block Block
-                | WhileStmt VarName Block
+                | ITEStmt Expression Block Block
+                | WhileStmt Expression Block
                 | ReturnStmt Expression
                 deriving (Eq, Show)
 

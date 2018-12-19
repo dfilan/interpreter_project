@@ -1,10 +1,8 @@
 main Ack(m,x) {
-    oneMonusM := 1 - m;
-    if (oneMonusM) {
+    if (1-m) {
         return x + 2
     } else {
-        oneMonusX := 1 - x;
-	if (oneMonusX) {
+	if (1-x) {
 	    return Ack(m - 1, Ack(m - 1, 0))
 	} else {
 	    return Ack(m - 1, Ack(m, x - 1))

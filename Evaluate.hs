@@ -58,18 +58,18 @@ evalBloc ruTab scTab = \case{
     newScTab <- updateScope ruTab scTab v e;
     evalBloc ruTab newScTab sts;
     };
-  (ITEStmt v sts1 sts2):sts3 -> do {
-    val <- varLookup v scTab;
+  (ITEStmt e sts1 sts2):sts3 -> do {
+    val <- evalExpr ruTab scTab e;
     case val of {
       0 -> evalBloc ruTab scTab $ sts2 ++ sts3;
       _ -> evalBloc ruTab scTab $ sts1 ++ sts3;
       };
     };
-  (WhileStmt v sts1):sts2    -> do {
-    val <- varLookup v scTab;
+  (WhileStmt e sts1):sts2    -> do {
+    val <- evalExpr ruTab scTab e;
     case val of {
       0 -> evalBloc ruTab scTab sts2;
-      _ -> evalBloc ruTab scTab $ sts1 ++ (WhileStmt v sts1):sts2;
+      _ -> evalBloc ruTab scTab $ sts1 ++ (WhileStmt e sts1):sts2;
       };
     };
   (ReturnStmt e):sts         -> evalExpr ruTab scTab e;

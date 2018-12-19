@@ -90,17 +90,23 @@ splitByBrackets l r n ts
     | otherwise              = (mapFst $ (:) $ head ts) <$> splitBrackets n
     where splitBrackets = \n -> splitByBrackets l r n $ tail ts
 
+splitByParens :: Integer -> [Token] -> Eval ([Token], [Token])
+splitByParens = splitByBrackets Pal Par
+
+splitByBraces :: Integer -> [Token] -> Eval ([Token], [Token])
+splitByBraces = splitByBrackets Kel Ker
+
 getInParens :: Integer -> [Token] -> Eval [Token]
-getInParens n ts = fst <$> (splitByBrackets Pal Par n ts)
+getInParens n ts = fst <$> (splitByParens n ts)
 
 getInBraces :: Integer -> [Token] -> Eval [Token]
-getInBraces n ts = fst <$> (splitByBrackets Kel Ker n ts)
+getInBraces n ts = fst <$> (splitByBraces n ts)
 
 dropParens :: Integer -> [Token] -> Eval [Token]
-dropParens n ts = snd <$> (splitByBrackets Pal Par n ts)
+dropParens n ts = snd <$> (splitByParens n ts)
 
 dropBraces :: Integer -> [Token] -> Eval [Token]
-dropBraces n ts = snd <$> (splitByBrackets Kel Ker n ts)
+dropBraces n ts = snd <$> (splitByBraces n ts)
 
 -- takes a sequence of tokens, and if the initial segment forms an expression,
 -- see what expression it is.
@@ -146,19 +152,37 @@ getLPOp _        = Left "Tried to make a LPOp out of something that isn't one."
 -- return that statement
 stmtify :: [Token] -> Eval Statement
 stmtify = \case{
-  (Var v):Assign:ts            -> (Assn v) <$> (exprify ts);
-  If:Pal:(Var v):Par:Kel:ts    -> do {
-    thenTokens <- getInBraces 1 ts;
-    thenBlock  <- blocify thenTokens;
-    afterThen  <- dropBraces 1 ts;
-    elseBlock  <- case afterThen of {
+  (Var v):Assign:ts -> (Assn v) <$> (exprify ts);
+  -- If:Pal:(Var v):Par:Kel:ts    -> do {
+  --   thenTokens <- getInBraces 1 ts;
+  --   thenBlock  <- blocify thenTokens;
+  --   afterThen  <- dropBraces 1 ts;
+  --   elseBlock  <- case afterThen of {
+  --     Else:ts' -> (getInBraces 0 ts') >>= blocify;
+  --     _        -> Right [];
+  --     };
+  --   return $ ITEStmt v thenBlock elseBlock;
+  --   };
+  If:Pal:ts         -> do {
+    (exprTokens, afterExpr) <- splitByParens 1 ts;
+    expression              <- exprify exprTokens;
+    (thenTokens, afterThen) <- splitByBraces 0 afterExpr;
+    thenBlock               <- blocify thenTokens;
+    elseBlock               <- case afterThen of {
       Else:ts' -> (getInBraces 0 ts') >>= blocify;
       _        -> Right [];
       };
-    return $ ITEStmt v thenBlock elseBlock;
+    return $ ITEStmt expression thenBlock elseBlock;
     };
-  While:Pal:(Var v):Par:Kel:ts -> (WhileStmt v) <$> ((getInBraces 1 ts)
-                                                     >>= blocify);
+  -- While:Pal:(Var v):Par:Kel:ts -> (WhileStmt v) <$> ((getInBraces 1 ts)
+  --                                                    >>= blocify);
+  While:Pal:ts      -> do {
+    (exprTokens, afterExpr) <- splitByParens 1 ts;
+    expression              <- exprify exprTokens;
+    whileBlockTokens        <- getInBraces 0 afterExpr;
+    whileBlock              <- blocify whileBlockTokens;
+    return $ WhileStmt expression whileBlock;
+    };
   Return:ts                    -> ReturnStmt <$> (exprify ts) ;
   _                            -> Left "Tried to make a statement out of\
                                         \ something that isn't a statement.";
@@ -187,11 +211,11 @@ splitByFirstStmt = \case{
   []     -> Right ([], []);
   Sem:ts -> Right ([Sem], ts);
   Kel:ts -> do {
-    (braceContents, afterBraces) <- splitByBrackets Kel Ker 1 ts;
+    (braceContents, afterBraces) <- splitByBraces 1 ts;
     let bracedContents = (Kel:braceContents) ++ [Ker]
     in case afterBraces of {
       Else:ts' -> do {
-         (elseContents, afterElse) <- splitByBrackets Kel Ker 0 ts';
+         (elseContents, afterElse) <- splitByBraces 0 ts';
          return (bracedContents ++ [Else, Kel] ++ elseContents ++ [Ker],
                  afterElse)
          };
@@ -252,8 +276,8 @@ splitByFirstRutn :: [Token] -> Eval ([Token], [Token])
 splitByFirstRutn = \case{
   []              -> Right ([], []);
   (Rutn r):Pal:ts -> do {
-    parenSplit <- splitByBrackets Pal Par 1 ts;
-    braceSplit <- splitByBrackets Kel Ker 0 $ snd parenSplit;
+    parenSplit <- splitByParens 1 ts;
+    braceSplit <- splitByBraces 0 $ snd parenSplit;
     return (([Rutn r, Pal] ++ (fst parenSplit) ++ [Par, Kel] ++ (fst braceSplit)
              ++ [Ker]),
             snd braceSplit)
