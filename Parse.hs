@@ -10,7 +10,7 @@ module Parse
 import Types
 import qualified Data.HashMap.Lazy as HM
 
--- takes a sequence of tokens, and if the initial segment forms an atom, see
+-- takes a sequence of tokens, and if the initial segment forms an atom, sees
 -- what atom it is
 atomify :: [Token] -> Eval Atom
 atomify = \case{
@@ -138,18 +138,26 @@ getLPOp _        = Left "Tried to make a LPOp out of something that isn't one."
 -- return that statement
 stmtify :: [Token] -> Eval Statement
 stmtify = \case{
-  (Var v):Assign:ts            -> (Assn v)      <$> (exprify ts);
-  If:Pal:(Var v):Par:Kel:ts    -> (IfStmt v)    <$> ((getInBraces 1 ts)
-                                                     >>= blocify);
+  (Var v):Assign:ts            -> (Assn v) <$> (exprify ts);
+  If:Pal:(Var v):Par:Kel:ts    -> do {
+    thenTokens <- getInBraces 1 ts;
+    thenBlock  <- blocify thenTokens;
+    afterThen  <- dropBraces 1 ts;
+    elseBlock  <- case afterThen of {
+      Else:ts' -> (getInBraces 0 ts') >>= blocify;
+      _        -> Right [];
+      };
+    return $ ITEStmt v thenBlock elseBlock;
+    };
   While:Pal:(Var v):Par:Kel:ts -> (WhileStmt v) <$> ((getInBraces 1 ts)
                                                      >>= blocify);
-  Return:ts                    -> ReturnStmt    <$> (exprify ts) ;
+  Return:ts                    -> ReturnStmt <$> (exprify ts) ;
   _                            -> Left "Tried to make a statement out of\
                                         \ something that isn't a statement.";
                }
 
 -- turn a list of tokens into a block
-blocify ::  [Token] -> Eval [Statement]
+blocify ::  [Token] -> Eval Block
 blocify ts = (group' ts) >>= (mapM stmtify)
 
 -- filter the output of group to only include 'statements' that aren't just a
@@ -170,11 +178,26 @@ splitByFirstStmt :: [Token] -> Eval ([Token], [Token])
 splitByFirstStmt = \case{
   []     -> Right ([], []);
   Sem:ts -> Right ([Sem], ts);
-  Kel:ts -> let eBracedContents = (((flip (++) [Ker]) . ((:) Kel))
-                                   <$> (getInBraces 1 ts))
-            in (,) <$> eBracedContents <*> (dropBraces 1 ts);
+  Kel:ts -> do {
+    (braceContents, afterBraces) <- splitByBrackets Kel Ker 1 ts;
+    let bracedContents = (Kel:braceContents) ++ [Ker]
+    in case afterBraces of {
+      Else:ts' -> do {
+         (elseContents, afterElse) <- splitByBrackets Kel Ker 0 ts';
+         return (bracedContents ++ [Else, Kel] ++ elseContents ++ [Ker],
+                 afterElse)
+         };
+      _        -> return (bracedContents, afterBraces)
+      };
+    };
+  -- let eBracedContents = (((flip (++) [Ker]) . ((:) Kel))
+  --                                  <$> (getInBraces 1 ts))
+  --           in case ts of {
+  --             Else:ts' -> a;
+  --             _        -> (,) <$> eBracedContents <*> (dropBraces 1 ts);
+  --   }
   t:ts   -> (mapFst $ (:) t) <$> (splitByFirstStmt ts);
-                        }
+  }
 
 -- take a list of tokens, and if the initial segment forms a routine, return
 -- that routine.
@@ -196,7 +219,7 @@ progify :: [Token] -> Eval Program
 progify (Main:(Rutn r):ts) = do {
   table   <- progify' HM.empty ((Rutn r):ts);
   routine <- rutnLookup r table;
-  return (routine, table)
+  return (routine, table);
   }
 progify _                  = Left "Expected first routine to be main."
 

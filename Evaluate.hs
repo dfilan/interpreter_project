@@ -22,7 +22,7 @@ evalAtom ruTab scTab = \case{
   RutnAtom r args -> do {
     routine   <- rutnLookup r ruTab;
     argValues <- mapM (evalAtom ruTab scTab) args;
-    evalRutn ruTab routine argValues
+    evalRutn ruTab routine argValues;
     };
   }
 
@@ -54,27 +54,27 @@ evalExpr ruTab scTab = \case{
 -- evaluate a block
 evalBloc :: RutnTable -> ScopeTable -> Block -> Eval Natural
 evalBloc ruTab scTab = \case{
-  (Assn v e):sts          -> do {
+  (Assn v e):sts             -> do {
     newScTab <- updateScope ruTab scTab v e;
-    evalBloc ruTab newScTab sts
+    evalBloc ruTab newScTab sts;
     };
-  (IfStmt v sts1):sts2    -> do {
+  (ITEStmt v sts1 sts2):sts3 -> do {
     val <- varLookup v scTab;
     case val of {
-      0 -> evalBloc ruTab scTab sts2;
-      _ -> evalBloc ruTab scTab $ sts1 ++ sts2;
+      0 -> evalBloc ruTab scTab $ sts2 ++ sts3;
+      _ -> evalBloc ruTab scTab $ sts1 ++ sts3;
       };
     };
-  (WhileStmt v sts1):sts2 -> do {
+  (WhileStmt v sts1):sts2    -> do {
     val <- varLookup v scTab;
     case val of {
       0 -> evalBloc ruTab scTab sts2;
       _ -> evalBloc ruTab scTab $ sts1 ++ (WhileStmt v sts1):sts2;
       };
     };
-  (ReturnStmt e):sts      -> evalExpr ruTab scTab e;
-  []                      -> Left "Tried to evaluate a block with no return\
-                                   \ statement."
+  (ReturnStmt e):sts         -> evalExpr ruTab scTab e;
+  []                         -> Left "Tried to evaluate a block with no return\
+                                      \ statement.";
   }
 
 -- take an assignment and a scope, and update the scope with the assignment

@@ -1,9 +1,9 @@
--- TODO: split things like atomify into splitting up tokens, parsing the first
+-- TODO?: split things like atomify into splitting up tokens, parsing the first
 -- bit
--- TODO: allow else statements
--- TODO: refactor expressions, terms, and atoms to be the same thing globally?
+-- TODO?: refactor expressions, terms, and atoms to be the same thing globally
 -- TODO: get rid of 'head' from my code
 -- TODO: use List1 in cases where I promise I don't have an empty list
+-- TODO: allow comments
 
 -- all the types we'll be exporting to other files
 -- note: the structure of some of these types closely relates to the grammar we
@@ -32,21 +32,8 @@ import Numeric.Natural
 import qualified Data.HashMap.Lazy as HM
 
 -- data types for operations by how much precedence they have
-data LowPrioOp = Plus | Monus deriving (Eq)
-data HighPrioOp = Times deriving (Eq)
-
-showLowPrioOp :: LowPrioOp -> String
-showLowPrioOp Plus  = "+"
-showLowPrioOp Monus = "-"
-
-instance Show LowPrioOp where
-  show = showLowPrioOp
-
-showHighPrioOp :: HighPrioOp -> String
-showHighPrioOp Times = "*"
-
-instance Show HighPrioOp where
-  show = showHighPrioOp
+data LowPrioOp = Plus | Monus deriving (Eq, Show)
+data HighPrioOp = Times deriving (Eq, Show)
 
 -- functions to take operators and return the operations that they represent
 lpOpFunc :: LowPrioOp -> Natural -> Natural -> Natural
@@ -86,6 +73,7 @@ data Token = Nat Natural
            | Ker -- right brace, '}'
            | Com -- comma, ','
            | If
+           | Else
            | While
            | Return
            | Main
@@ -111,8 +99,8 @@ type Block = [Statement]
 type RutnTable = HM.HashMap RutnName Routine
 
 data Statement  = Assn VarName Expression
-                | IfStmt VarName [Statement]
-                | WhileStmt VarName [Statement]
+                | ITEStmt VarName Block Block
+                | WhileStmt VarName Block
                 | ReturnStmt Expression
                 deriving (Eq, Show)
 

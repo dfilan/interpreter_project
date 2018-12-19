@@ -48,6 +48,7 @@ readAlphas str
                                        \ in disallowed context (e.g. equals\
                                        \ sign without a colon)."
     | isPrefixOf "if" name     = Right (If,     2)
+    | isPrefixOf "else" name   = Right (Else,   4)
     | isPrefixOf "while" name  = Right (While,  5)
     | isPrefixOf "return" name = Right (Return, 6)
     | isPrefixOf "main" name   = Right (Main,   4)

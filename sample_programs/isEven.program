@@ -1,0 +1,12 @@
+main IsEven(n) {
+     if (n) {
+     	nMonusOne := n - 1;
+	if (nMonusOne) {
+	    v := n - 2;
+	    return IsEven(v);
+	} else {
+	    return 0;
+	}
+     }
+     return 1;
+}
