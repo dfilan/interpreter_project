@@ -1,10 +1,11 @@
 -- TODO: split things like atomify into splitting up tokens, parsing the first
 -- bit
+-- TODO: allow if, while statements to take arbitrary expressions
+-- TODO: add for loops
 -- TODO?: refactor expressions, terms, and atoms to be the same thing globally
 -- TODO?: get rid of 'head' from my code
 -- TODO?: use List1 in cases where I promise I don't have an empty list
 -- TODO: allow comments
--- TODO: allow expressions to be arguments to functions
 
 -- all the types we'll be exporting to other files
 -- note: the structure of some of these types closely relates to the grammar we

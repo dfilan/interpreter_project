@@ -3,7 +3,7 @@ main IsEven(n) {
      	nMonusOne := n - 1;
 	if (nMonusOne) {
 	    v := n - 2;
-	    return IsEven(v+0);
+	    return IsEven(n-2);
 	} else {
 	    return 0;
 	}

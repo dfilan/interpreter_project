@@ -24,17 +24,28 @@ atomify = \case{
                            }
 
 splitByCommas :: [Token] -> Eval [[Token]]
-splitByCommas = \case{
-  []              -> Right [[]];
-  Com:ts          -> splitByCommas ts;
-  (Rutn r):Pal:ts ->
-    let eFirstBit = (flip (++) [Par]) . ((++) [Rutn r, Pal]) <$> (getInParens 1
-                                                                  ts)
-    in (:) <$> eFirstBit <*> (dropParens 1 ts >>= splitByCommas);
-  t:ts            ->
-    let addToFirst = (((:) t) . head) <$> splitByCommas ts
-    in (:) <$> addToFirst <*> (tail <$> splitByCommas ts);
+splitByCommas [] = Right []
+splitByCommas ts = do {
+  (first, second) <- splitByFirstComma ts;
+  recurse         <- splitByCommas second;
+  return (first:recurse);
   }
+
+splitByFirstComma :: [Token] -> Eval ([Token], [Token])
+splitByFirstComma []     = Right ([],[])
+splitByFirstComma (t:ts) = case t of {
+  Com -> Right ([],ts);
+  Pal -> do {
+    contents        <- getInParens 1 ts;
+    rest            <- dropParens 1 ts;
+    (first, second) <- splitByFirstComma rest;
+    return ([Pal] ++ contents ++ [Par] ++ first, second);
+    };
+  t   -> mapFst ((:) t) <$> (splitByFirstComma ts);
+  }
+
+mapFst :: (a -> b) -> (a, c) -> (b, c)
+mapFst f (x, y) = (f x, y)
 
 -- takes a sequence of tokens, and if the initial segment forms a term, then
 -- sees what term it is
@@ -78,9 +89,6 @@ splitByBrackets l r n ts
     | head ts == r           = (mapFst $ (:) r) <$> splitBrackets (n-1)
     | otherwise              = (mapFst $ (:) $ head ts) <$> splitBrackets n
     where splitBrackets = \n -> splitByBrackets l r n $ tail ts
-
-mapFst :: (a -> b) -> (a, c) -> (b, c)
-mapFst f (x, y) = (f x, y)
 
 getInParens :: Integer -> [Token] -> Eval [Token]
 getInParens n ts = fst <$> (splitByBrackets Pal Par n ts)
@@ -190,12 +198,6 @@ splitByFirstStmt = \case{
       _        -> return (bracedContents, afterBraces)
       };
     };
-  -- let eBracedContents = (((flip (++) [Ker]) . ((:) Kel))
-  --                                  <$> (getInBraces 1 ts))
-  --           in case ts of {
-  --             Else:ts' -> a;
-  --             _        -> (,) <$> eBracedContents <*> (dropBraces 1 ts);
-  --   }
   t:ts   -> (mapFst $ (:) t) <$> (splitByFirstStmt ts);
   }
 
