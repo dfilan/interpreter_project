@@ -6,7 +6,7 @@ Changes to the language as defined in the notes:
 - As in the text, routines have names that begin with capital letters, and the first needs to be called main. Unlike in the text, their definition does not need to include the local variables that they use, and their arguments can be any atomic expressions, so `F(x,0,G(3,x))` is a valid routine call, but `F(x+y,0,G(3,x))` is not.
 - The insides of routines consist of various statements:
   - Return statements are written `return ...`, where `...` is any valid expression, and do what you'd expect. 
-  - If statements are written `if (v) {...}`, where `v` is a variable name, and `...` is a sequence of statements separated by semicolons. If `v` is non-zero, the inner block is evaluated, otherwise it isn't.
+  - If statements are written `if (v) {...}`, where `v` is a variable name, and `...` is a sequence of statements separated by semicolons. If `v` is non-zero, the inner block is evaluated, otherwise it isn't. There can also be an else block, which executes if `v` is zero: this is written `if (v) {...} else {...}`.
   - While statements are written `while (v) {...}`, where `v` is a variable name, and `...` is a sequence of statements separated by semicolons. The inner block loops as long as `v` is non-zero.
   - Assignments are written `x := ...;`, where `...` is the value that will be assigned to `x`. This can be any arbitrary arithmetic expression involving natural numbers, previously defined variables, and routines defined anywhere in the program.
 - All binary operators are right-associative, so `3 - 5 + 7` = `3 - (5 + 7)` = 0.
