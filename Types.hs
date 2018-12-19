@@ -112,7 +112,9 @@ data Expression = Expr Term | ExprComb Term LowPrioOp Expression
 data Term       = Trm Atom | TrmComb Atom HighPrioOp Term | ParenTrm Expression
                 deriving (Eq, Show)
 
-data Atom       = NatAtom Natural | VarAtom VarName | RutnAtom RutnName [Atom]
+data Atom       = NatAtom Natural
+                | VarAtom VarName
+                | RutnAtom RutnName [Expression]
                 deriving (Eq, Show)
 
 -- data type that allows for errors that can show up during execution. Because

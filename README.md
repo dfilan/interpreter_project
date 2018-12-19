@@ -3,7 +3,7 @@ Making an interpreter in Haskell for a simple programming language that was desi
 Note that all data are natural numbers, so 'subtraction' is actually the monus operator: x monus y = x - y if x > y and 0 otherwise.
 
 Changes to the language as defined in the notes:
-- As in the text, routines have names that begin with capital letters, and the first needs to be called main. Unlike in the text, their definition does not need to include the local variables that they use, and their arguments can be any atomic expressions, so `F(x,0,G(3,x))` is a valid routine call, but `F(x+y,0,G(3,x))` is not.
+- As in the text, routines have names that begin with capital letters, and the first needs to be called main. Unlike in the text, their definition does not need to include the local variables that they use, and their arguments can be any expressions, e.g. `F((x+y)*3,0,G(3,x))`.
 - The insides of routines consist of various statements:
   - Return statements are written `return ...`, where `...` is any valid expression, and do what you'd expect. 
   - If statements are written `if (v) {...}`, where `v` is a variable name, and `...` is a sequence of statements separated by semicolons. If `v` is non-zero, the inner block is evaluated, otherwise it isn't. There can also be an else block, which executes if `v` is zero: this is written `if (v) {...} else {...}`.

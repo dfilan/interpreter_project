@@ -21,7 +21,7 @@ evalAtom ruTab scTab = \case{
   VarAtom v       -> varLookup v scTab;
   RutnAtom r args -> do {
     routine   <- rutnLookup r ruTab;
-    argValues <- mapM (evalAtom ruTab scTab) args;
+    argValues <- mapM (evalExpr ruTab scTab) args;
     evalRutn ruTab routine argValues;
     };
   }

@@ -17,7 +17,7 @@ atomify = \case{
     (Nat n):_   -> Right (NatAtom n);
     (Var v):_   -> Right (VarAtom v);
     (Rutn r):ts -> RutnAtom r <$> (getInParens 0 ts >>= splitByCommas
-                                   >>= mapM atomify);
+                                   >>= mapM exprify);
     _           -> Left "Tried to read a non-atom as an atom. Perhaps\
                          \ something other than an atom was used as an\
                          \ argument to a routine?";
