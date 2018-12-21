@@ -1,88 +1,104 @@
-{-# LANGUAGE LambdaCase #-}
-
--- exports stringToTokens, which takes a string and turns it into a list of
--- tokens
+-- exports a bunch of parsers for things that are single tokens.
 module Tokenise
-       ( stringToTokens
+       ( natural
+       , varName
+       , rutnName
+       , lpop
+       , hpop
+       , assign
+       , sem
+       , pal
+       , par
+       , kel
+       , ker
+       , com
+       , ifToken
+       , elseToken
+       , whileToken
+       , returnToken
+       , mainToken
        ) where
 
 import Numeric.Natural
+
 import Data.Char
 import Data.List
 
+import Control.Monad
+
+import Text.Parsec
+import Text.Parsec.String
+import Text.Parsec.Char
+
 import Types
 
--- take the input, get a token and the offest to next token. Fail if the
--- character doesn't represent a valid token.
-getToken :: String -> Eval (Token, Int)
-getToken str
-    | isDigit char = readNat str
-    | char == '+'  = Right (LPOp Plus,  1)
-    | char == '-'  = Right (LPOp Monus, 1)
-    | char == '*'  = Right (HPOp Times, 1)
-    | isSpace char = (\(a,b) -> (a,b+1)) <$> (getToken $ tail str)
-    | char == ':'  = readAssign str
-    | char == ';'  = Right (Sem, 1)
-    | char == '('  = Right (Pal, 1)
-    | char == ')'  = Right (Par, 1)
-    | char == '{'  = Right (Kel, 1)
-    | char == '}'  = Right (Ker, 1)
-    | char == ','  = Right (Com, 1)
-    | otherwise    = readAlphas str
-    where char = head str
+-- helper functions
+singleCharToken :: Token -> Char -> Parser Token
+singleCharToken tok = ((>>) spaces) . (fmap (\_ -> tok)) . char
 
--- special function for reading ':=', the assignment operator
-readAssign :: String -> Eval (Token, Int)
-readAssign str
-    | length str < 2                = colonError
-    | first == ':' && second == '=' = Right (Assign, 2)
-    | otherwise                     = colonError
-    where first      = head str
-          second     = head $ tail str
-          colonError = Left "Typed colon without subsequent equals sign."
+stringToken :: Token -> String -> Parser Token
+stringToken tok = ((>>) spaces) . (fmap (\_ -> tok)) . string
 
--- special function for reading alphabetical sections
-readAlphas :: String -> Eval (Token, Int)
-readAlphas str
-    | length name == 0         = Left "Used disallowed character, or character\
-                                       \ in disallowed context (e.g. equals\
-                                       \ sign without a colon)."
-    | isPrefixOf "if" name     = Right (If,     2)
-    | isPrefixOf "else" name   = Right (Else,   4)
-    | isPrefixOf "while" name  = Right (While,  5)
-    | isPrefixOf "return" name = Right (Return, 6)
-    | isPrefixOf "main" name   = Right (Main,   4)
-    | isUpper $ head name      = Right (Rutn name, length name)
-    | otherwise                = Right (Var name,  length name)
-  where name = getAlphas str
-
-getAlphas :: String -> String
-getAlphas str = takeWhile isAlpha str
-
--- special function for reading natural numbers
-readNat :: String -> Eval (Token, Int)
-readNat str = Right (Nat n, diff)
-  where (n, diff) = readNat' str
-
-readNat' :: String -> (Natural, Int)
-readNat' str = makePair (fromIntegral . digitsToNum) length $ getDigits str
-
-makePair :: (c -> a) -> (c -> b) -> c -> (a,b)
-makePair f g x = (f x, g x)
-
-getDigits :: String -> [Int]
-getDigits str = map digitToInt $ takeWhile isDigit str
+stringToNatural :: String -> Natural
+stringToNatural = fromIntegral . digitsToNum . (map digitToInt)
 
 digitsToNum :: [Int] -> Int
 digitsToNum = foldl (\acc n -> n + 10 * acc) 0
 
--- turn input into a list of tokens
-stringToTokens :: String -> Eval [Token]
-stringToTokens = \case {
-  []  -> Right [];
-  str -> do {
-    (token, nextPos) <- getToken str;
-    tokeniseRest     <- stringToTokens $ drop nextPos str;
-    return (token:tokeniseRest);
-    };
-  }
+-- token parsers
+natural :: Parser Natural
+natural = spaces >> (stringToNatural <$> (many1 digit))
+
+varName :: Parser VarName
+varName = spaces >> ((liftM2 (:) lower (many alphaNum)))
+
+rutnName :: Parser RutnName
+rutnName = spaces >> (liftM2 (:) upper (many alphaNum))
+
+lpop :: Parser LowPrioOp
+lpop = plus <|> monus
+
+plus :: Parser LowPrioOp
+plus = spaces >> ((\_ -> Plus) <$> (char '+'))
+
+monus :: Parser LowPrioOp
+monus = spaces >> ((\_ -> Monus) <$> (char '-'))
+
+hpop :: Parser HighPrioOp
+hpop = spaces >> ((\_ -> Times) <$> (char '*'))
+
+assign :: Parser Token
+assign = stringToken Assign ":="
+
+sem :: Parser Token
+sem = singleCharToken Sem ';'
+
+pal :: Parser Token
+pal = singleCharToken Pal '('
+
+par :: Parser Token
+par = singleCharToken Par ')'
+
+kel :: Parser Token
+kel = singleCharToken Kel '{'
+
+ker :: Parser Token
+ker = singleCharToken Ker '}'
+
+com :: Parser Token
+com = singleCharToken Com ','
+
+ifToken :: Parser Token
+ifToken = stringToken If "if"
+
+elseToken :: Parser Token
+elseToken = stringToken Else "else"
+
+whileToken :: Parser Token
+whileToken = stringToken While "while"
+
+returnToken :: Parser Token
+returnToken = stringToken Return "return"
+
+mainToken :: Parser Token
+mainToken = stringToken Main "main"
