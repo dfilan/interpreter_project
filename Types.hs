@@ -1,7 +1,5 @@
--- TODO: split things like atomify into splitting up tokens, parsing the first
--- bit
 -- TODO: add for loops
--- TODO?: refactor expressions, terms, and atoms to be the same thing globally
+-- TODO: use chainl instead of recursion in my expression grammar
 -- TODO?: get rid of 'head' from my code
 -- TODO?: use List1 in cases where I promise I don't have an empty list
 -- TODO: allow comments
@@ -19,6 +17,7 @@ module Types
        , ScopeTable
        , RutnTable
        , Token(..)
+       , TokenPos
        , Program
        , Block
        , Routine
@@ -31,6 +30,7 @@ module Types
 
 import Numeric.Natural
 import qualified Data.HashMap.Lazy as HM
+import Text.Parsec.Pos
 
 -- data types for operations by how much precedence they have
 data LowPrioOp = Plus | Monus deriving (Eq, Show)
@@ -60,7 +60,7 @@ type RutnName = String
 -- associating variable names with the values that they hold
 type ScopeTable = HM.HashMap VarName Natural
 
--- defining a data type for tokens, where EOF means end of file.
+-- defining a data type for tokens
 data Token = Nat Natural
            | Var VarName
            | Rutn RutnName
@@ -80,6 +80,8 @@ data Token = Nat Natural
            | Main
            deriving (Eq, Show)
 
+type TokenPos = (Token, SourcePos)
+
 -- data types representing the grammar of programs that we accept
 
 -- a program is a main routine and some auxiliary routines.
@@ -91,13 +93,13 @@ type Program = (Routine, RutnTable)
 -- statements.
 type Routine = ([VarName], Block)
 
--- a block is just a bunch of statements, one of which should probably be a
--- return statement
-type Block = [Statement]
-
 -- we're also going to keep a routine table associating routine names with the
 -- routines that they're associated with
 type RutnTable = HM.HashMap RutnName Routine
+
+-- a block is just a bunch of statements, one of which should probably be a
+-- return statement
+type Block = [Statement]
 
 data Statement  = Assn VarName Expression
                 | ITEStmt Expression Block Block

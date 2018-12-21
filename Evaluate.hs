@@ -34,6 +34,14 @@ varLookup v tab = case (HM.lookup v tab) of {
   Nothing -> Left "Tried to look up value of non-existent variable.";
   }
 
+-- look up a routine, returning something in Eval Routine rather than Maybe
+-- Routine
+rutnLookup :: RutnName -> RutnTable -> Eval Routine
+rutnLookup r tab = case (HM.lookup r tab) of {
+  Just rutn -> Right rutn;
+  Nothing   -> Left "Tried to look up non-existent routine."
+  }
+
 -- evaluates a term
 evalTerm :: RutnTable -> ScopeTable -> Term -> Eval Natural
 evalTerm ruTab scTab = \case{
