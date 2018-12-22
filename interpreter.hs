@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 -- simple interpreter thing.
 -- supports natural numbers, addition, multiplication, natural number
 -- subtraction (m monus n = max(m-n,0)), parentheses, and variable assignment.
@@ -29,4 +27,4 @@ main = do {
       Left err -> print err;
       Right pr -> print $ (readNatList (args!!1)) >>= (evalProg pr);
       };
-    }
+}

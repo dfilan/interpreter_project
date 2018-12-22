@@ -19,7 +19,8 @@ module Types
        , RutnName
        , ScopeTable
        , RutnTable
-       , Token(..)
+       , ReservedName(..)
+       , Symbol(..)
        , Program
        , Block
        , Routine
@@ -64,25 +65,20 @@ type RutnName = String
 -- associating variable names with the values that they hold
 type ScopeTable = HM.HashMap VarName Natural
 
--- defining a data type for tokens
-data Token = Nat Natural
-           | Var VarName
-           | Rutn RutnName
-           | LPOp LowPrioOp
-           | HPOp HighPrioOp
-           | Assign -- assignment sign, ':='
-           | Sem -- semicolon, ';'
-           | Pal -- left paren, '('
-           | Par -- right paren, ')'
-           | Kel -- left brace, '{'
-           | Ker -- right brace, '}'
-           | Com -- comma, ','
-           | If
-           | Else
-           | While
-           | Return
-           | Main
-           deriving (Eq, Show)
+data ReservedName = If
+                  | Else
+                  | While
+                  | Return
+                  | Main
+                  deriving (Eq, Show)
+
+data Symbol = Assign -- assignment sign, ':='
+            | Sem -- semicolon, ';'
+            | Pal -- left paren, '('
+            | Par -- right paren, ')'
+            | Kel -- left brace, '{'
+            | Ker -- right brace, '}'
+            | Com -- comma, ','
 
 -- data types representing the grammar of programs that we accept
 

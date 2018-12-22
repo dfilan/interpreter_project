@@ -70,38 +70,38 @@ monus = singleCharToken Monus '-'
 hpop :: Parser HighPrioOp
 hpop = singleCharToken Times '*'
 
-assign :: Parser Token
+assign :: Parser Symbol
 assign = stringToken Assign ":="
 
-sem :: Parser Token
+sem :: Parser Symbol
 sem = singleCharToken Sem ';'
 
-pal :: Parser Token
+pal :: Parser Symbol
 pal = singleCharToken Pal '('
 
-par :: Parser Token
+par :: Parser Symbol
 par = singleCharToken Par ')'
 
-kel :: Parser Token
+kel :: Parser Symbol
 kel = singleCharToken Kel '{'
 
-ker :: Parser Token
+ker :: Parser Symbol
 ker = singleCharToken Ker '}'
 
-com :: Parser Token
+com :: Parser Symbol
 com = singleCharToken Com ','
 
-ifToken :: Parser Token
+ifToken :: Parser ReservedName
 ifToken = try $ stringToken If "if"
 
-elseToken :: Parser Token
+elseToken :: Parser ReservedName
 elseToken = try $ stringToken Else "else"
 
-whileToken :: Parser Token
+whileToken :: Parser ReservedName
 whileToken = try $ stringToken While "while"
 
-returnToken :: Parser Token
+returnToken :: Parser ReservedName
 returnToken = try $ stringToken Return "return"
 
-mainToken :: Parser Token
+mainToken :: Parser ReservedName
 mainToken = try $ stringToken Main "main"
