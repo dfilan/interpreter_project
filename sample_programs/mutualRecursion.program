@@ -1,0 +1,13 @@
+main IsEven(n) {
+    if (1-n) {
+        return 1
+    };
+    return IsOdd(n-1)
+}
+
+IsOdd(n) {
+    if (1-n) {
+        return 0;
+    };
+    return IsEven(n-1)
+}
