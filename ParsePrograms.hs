@@ -17,7 +17,7 @@ import qualified Data.HashMap.Lazy as HM
 
 -- parser for statements
 stmt :: Parser Statement
-stmt = assignment <|> iteStatement <|> whileStatement <|> returnStatement
+stmt = iteStatement <|> whileStatement <|> returnStatement <|> assignment
 
 assignment :: Parser Statement
 assignment = Assn <$> varName <*> (assign >> expr)
