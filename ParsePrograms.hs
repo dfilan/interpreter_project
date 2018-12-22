@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 -- exports a parser for programs
 
 module ParsePrograms
@@ -18,36 +20,24 @@ stmt :: Parser Statement
 stmt = assignment <|> iteStatement <|> whileStatement <|> returnStatement
 
 assignment :: Parser Statement
-assignment = do {
-  assignedVar  <- varName;
-  assign;
-  assignedExpr <- expr;
-  return $ Assn assignedVar assignedExpr;
-  }
+assignment = Assn <$> varName <*> (assign >> expr)
 
 iteStatement :: Parser Statement
 iteStatement = (try hasElse) <|> justIfThen
 
 hasElse :: Parser Statement
-hasElse = do {
-  ifToken;
-  branchExpr <- inParens expr;
-  thenBlock  <- inBraces bloc;
-  elseToken;
-  elseBlock  <- inBraces bloc;
-  return $ ITEStmt branchExpr thenBlock elseBlock;
-  }
+hasElse = (ITEStmt <$> (ifToken >> inParens expr) <*> inBraces bloc
+           <*> (elseToken >> inBraces bloc))
 
 justIfThen :: Parser Statement
-justIfThen = ifToken >> (ITEStmt <$> (inParens expr) <*> (inBraces bloc)
-                         <*> return [])
+justIfThen = (ITEStmt <$> (ifToken >> inParens expr) <*> inBraces bloc
+              <*> pure [])
 
 whileStatement :: Parser Statement
-whileStatement = whileToken >> (WhileStmt <$> (inParens expr)
-                                <*> (inBraces bloc))
+whileStatement = WhileStmt <$> (whileToken >> inParens expr) <*> inBraces bloc
 
 returnStatement :: Parser Statement
-returnStatement = returnToken >> (ReturnStmt <$> expr)
+returnStatement = ReturnStmt <$> (returnToken >> expr)
 
 -- parser for blocks
 bloc :: Parser Block
@@ -55,12 +45,8 @@ bloc = sepEndBy stmt sem
 
 -- parser for routines and their names
 rutn :: Parser (RutnName, Routine)
-rutn = do {
-  r    <- rutnName;
-  args <- inParens (sepBy varName com);
-  body <- inBraces bloc;
-  return (r, (args, body));
-  }
+rutn = (,) <$> rutnName <*> ((,) <$> (inParens $ sepBy varName com)
+                             <*> inBraces bloc)
 
 -- parser for programs
 prog :: Parser Program

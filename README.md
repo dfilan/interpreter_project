@@ -3,7 +3,7 @@ Making an interpreter in Haskell for a simple programming language that was desi
 Note that all data are natural numbers, so 'subtraction' is actually the monus operator: x monus y = x - y if x > y and 0 otherwise.
 
 Changes to the language as defined in the notes:
-- As in the text, routines have names that begin with capital letters, and the first needs to be called main. Unlike in the text, their definition does not need to include the local variables that they use, and their arguments can be any expressions, e.g. `F((x+y)*3,0,G(3,x))`.
+- The definition of a routine does not need to include the local variables that the routine use, and its arguments when called can be any expressions, e.g. `F((x+y)*3,0,G(3,x))`.
 - The insides of routines consist of various statements:
   - Return statements are written `return ...`, where `...` is any valid expression, and do what you'd expect. 
   - If statements are written `if (e) {...};`, where `e` is any valid expression, and `...` is a sequence of statements separated by semicolons. If the expression evaluates to something other than zero, the inner block is evaluated, otherwise it isn't. There can also be an else block, which executes if the expression does evaluate to zero: this is written `if (e) {...} else {...};`.
@@ -12,3 +12,4 @@ Changes to the language as defined in the notes:
 - Every statement in a block must end with a semicolon.
 - All binary operators are right-associative, so `3 - 5 + 7` = `3 - (5 + 7)` = 0.
 - You can use parentheses in arithmetic expressions like `(3 - 5) + 7`, which evaluates to 7.
+- Routine and variable names must consist entirely of alphanumeric characters. Routine names must begin with an upper-case letter, and variable names must begin with a lower-case letter

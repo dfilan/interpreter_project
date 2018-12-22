@@ -1,5 +1,8 @@
+-- TODO: get rid of token type
 -- TODO: add for loops
--- TODO: use chainl instead of recursion in my expression grammar
+-- TODO: use chainl1 instead of recursion in my expression grammar
+-- note: amazingly, this only works if I make expressions, terms, and atoms
+-- the same thing.
 -- TODO?: get rid of 'head' from my code
 -- TODO?: use List1 in cases where I promise I don't have an empty list
 -- TODO: allow comments

@@ -33,39 +33,42 @@ import Text.Parsec.Char
 import Types
 
 -- helper functions
-singleCharToken :: Token -> Char -> Parser Token
-singleCharToken tok = ((>>) spaces) . (fmap (\_ -> tok)) . char
+thenSpaces :: a -> Parser a
+thenSpaces = \x -> (spaces >> return x)
 
-stringToken :: Token -> String -> Parser Token
-stringToken tok = ((>>) spaces) . (fmap (\_ -> tok)) . string
+singleCharToken :: a -> Char -> Parser a
+singleCharToken tok = (=<<) thenSpaces . fmap (\_ -> tok) . char
+
+stringToken :: a -> String -> Parser a
+stringToken tok = (=<<) thenSpaces . fmap (\_ -> tok) . string
 
 stringToNatural :: String -> Natural
-stringToNatural = fromIntegral . digitsToNum . (map digitToInt)
+stringToNatural = fromIntegral . digitsToNum . map digitToInt
 
 digitsToNum :: [Int] -> Int
 digitsToNum = foldl (\acc n -> n + 10 * acc) 0
 
 -- token parsers
 natural :: Parser Natural
-natural = spaces >> (stringToNatural <$> (many1 digit))
+natural = stringToNatural <$> many1 digit >>= thenSpaces
 
 varName :: Parser VarName
-varName = spaces >> ((liftM2 (:) lower (many alphaNum)))
+varName = liftM2 (:) lower (many alphaNum) >>= thenSpaces
 
 rutnName :: Parser RutnName
-rutnName = spaces >> (liftM2 (:) upper (many alphaNum))
+rutnName = liftM2 (:) upper (many alphaNum) >>= thenSpaces
 
 lpop :: Parser LowPrioOp
 lpop = plus <|> monus
 
 plus :: Parser LowPrioOp
-plus = spaces >> ((\_ -> Plus) <$> (char '+'))
+plus = singleCharToken Plus '+'
 
 monus :: Parser LowPrioOp
-monus = spaces >> ((\_ -> Monus) <$> (char '-'))
+monus = singleCharToken Monus '-'
 
 hpop :: Parser HighPrioOp
-hpop = spaces >> ((\_ -> Times) <$> (char '*'))
+hpop = singleCharToken Times '*'
 
 assign :: Parser Token
 assign = stringToken Assign ":="

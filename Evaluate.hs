@@ -12,7 +12,6 @@ import Control.Monad
 import qualified Data.HashMap.Lazy as HM
 
 import Types
-import Parse
 
 -- evaluates an atom
 evalAtom :: RutnTable -> ScopeTable -> Atom -> Eval Natural
@@ -110,5 +109,5 @@ mkScTab' scTab = \case{
 
 -- to evaluate a program, you get the program and the list of naturals it will
 -- be applied to, then evaluate the main routine on that list
-evalProg :: [Natural] -> Program -> Eval Natural
-evalProg args (r, ruTab) = evalRutn ruTab r args
+evalProg :: Program -> [Natural] -> Eval Natural
+evalProg (r, ruTab) args = evalRutn ruTab r args
