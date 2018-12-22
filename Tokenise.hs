@@ -92,16 +92,16 @@ com :: Parser Token
 com = singleCharToken Com ','
 
 ifToken :: Parser Token
-ifToken = stringToken If "if"
+ifToken = try $ stringToken If "if"
 
 elseToken :: Parser Token
-elseToken = stringToken Else "else"
+elseToken = try $ stringToken Else "else"
 
 whileToken :: Parser Token
-whileToken = stringToken While "while"
+whileToken = try $ stringToken While "while"
 
 returnToken :: Parser Token
-returnToken = stringToken Return "return"
+returnToken = try $ stringToken Return "return"
 
 mainToken :: Parser Token
-mainToken = stringToken Main "main"
+mainToken = try $ stringToken Main "main"
