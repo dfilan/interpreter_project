@@ -20,7 +20,6 @@ module Types
        , ScopeTable
        , RutnTable
        , Token(..)
-       , TokenPos
        , Program
        , Block
        , Routine
@@ -32,7 +31,9 @@ module Types
        ) where
 
 import Numeric.Natural
+
 import qualified Data.HashMap.Lazy as HM
+
 import Text.Parsec.Pos
 
 -- data types for operations by how much precedence they have
@@ -82,8 +83,6 @@ data Token = Nat Natural
            | Return
            | Main
            deriving (Eq, Show)
-
-type TokenPos = (Token, SourcePos)
 
 -- data types representing the grammar of programs that we accept
 

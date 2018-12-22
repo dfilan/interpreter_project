@@ -6,12 +6,14 @@ module Evaluate
        ( evalProg
        ) where
 
+import Types
+
 import Numeric.Natural
+
 import Control.Applicative
 import Control.Monad
-import qualified Data.HashMap.Lazy as HM
 
-import Types
+import qualified Data.HashMap.Lazy as HM
 
 -- evaluates an atom
 evalAtom :: RutnTable -> ScopeTable -> Atom -> Eval Natural
